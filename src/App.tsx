@@ -189,7 +189,7 @@ function App() {
         {/* Main Editor Area */}
         <div className="flex-1 flex flex-col relative z-0 min-w-0">
           {/* Tab Bar */}
-          <div className="flex bg-[var(--bg-sidebar)] border-b border-[var(--border-glass)] backdrop-blur-md overflow-x-auto no-scrollbar pl-2 pr-4 pt-2">
+          <div className="flex items-end bg-[var(--bg-sidebar)] border-b border-[var(--border-glass)] backdrop-blur-md overflow-x-auto no-scrollbar pl-2 pr-4 pt-1 h-9">
             {tabs.map((tab, idx) => (
               <div
                 key={tab.fileId}
@@ -199,25 +199,25 @@ function App() {
                 onDrop={(e) => handleTabDrop(e, idx)}
                 onClick={() => openFile(tab.fileId, tab.type, tab.name)}
                 className={cn(
-                  "group flex items-center gap-2 px-4 py-2 min-w-[120px] max-w-[200px] border-r border-t border-l rounded-t-xl cursor-pointer transition-all select-none -mb-[1px] cursor-grab active:cursor-grabbing",
+                  "group flex items-center gap-2 px-3 py-1.5 min-w-[100px] max-w-[200px] border-r border-t border-l rounded-t-lg cursor-pointer transition-all select-none -mb-[1px] cursor-grab active:cursor-grabbing",
                   activeTabId === tab.fileId
                     ? "bg-[var(--bg-base)] border-[var(--border-glass-strong)] text-[var(--text-main)] font-semibold shadow-[0_-2px_10px_rgba(0,0,0,0.05)] z-10"
                     : "bg-transparent border-transparent text-[var(--text-muted)] hover:bg-[var(--bg-glass)] z-0"
                 )}
               >
-                <div className={cn("w-2 h-2 rounded-full", tab.type === 'md' ? 'bg-blue-500' : tab.type === 'Tasks' ? 'bg-green-500' : 'bg-orange-500')} />
-                <span className="truncate flex-1 text-sm">{tab.name}</span>
+                <div className={cn("w-1.5 h-1.5 rounded-full", tab.type === 'md' ? 'bg-blue-500' : tab.type === 'Tasks' ? 'bg-green-500' : 'bg-orange-500')} />
+                <span className="truncate flex-1 text-xs">{tab.name}</span>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     closeTab(tab.fileId);
                   }}
                   className={cn(
-                    "p-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 transition-all",
+                    "p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 transition-all",
                     activeTabId === tab.fileId && "opacity-100"
                   )}
                 >
-                  <X size={14} />
+                  <X size={12} />
                 </button>
               </div>
             ))}
@@ -225,11 +225,11 @@ function App() {
             <div className="flex-1" />
             
             {/* Right Panel Toggles */}
-            <div className="flex items-center gap-1 pb-1">
+            <div className="flex items-center gap-1 mb-1">
               {activeFile?.type === 'md' && (
                 <button
                   onClick={() => toggleRightPanel('outline')}
-                  className={cn("p-1.5 rounded-lg transition-colors", rightPanelMode === 'outline' ? "bg-[var(--accent)] text-white" : "hover:bg-[var(--bg-glass)] text-[var(--text-muted)]")}
+                  className={cn("p-1 rounded transition-colors", rightPanelMode === 'outline' ? "bg-[var(--accent)] text-white" : "hover:bg-[var(--bg-glass)] text-[var(--text-muted)]")}
                   title="Toggle Outline"
                 >
                   <Hash size={14} />
@@ -237,14 +237,14 @@ function App() {
               )}
               <button
                 onClick={() => toggleRightPanel('backlinks')}
-                className={cn("p-1.5 rounded-lg transition-colors", rightPanelMode === 'backlinks' ? "bg-[var(--accent)] text-white" : "hover:bg-[var(--bg-glass)] text-[var(--text-muted)]")}
+                className={cn("p-1 rounded transition-colors", rightPanelMode === 'backlinks' ? "bg-[var(--accent)] text-white" : "hover:bg-[var(--bg-glass)] text-[var(--text-muted)]")}
                 title="Toggle Backlinks"
               >
                 <LinkIcon size={14} />
               </button>
               <button
                 onClick={() => toggleRightPanel('ai')}
-                className={cn("p-1.5 rounded-lg transition-colors", rightPanelMode === 'ai' ? "bg-[var(--accent)] text-white" : "hover:bg-[var(--bg-glass)] text-[var(--text-muted)]")}
+                className={cn("p-1 rounded transition-colors", rightPanelMode === 'ai' ? "bg-[var(--accent)] text-white" : "hover:bg-[var(--bg-glass)] text-[var(--text-muted)]")}
                 title="Toggle AI Copilot"
               >
                 <Bot size={14} />

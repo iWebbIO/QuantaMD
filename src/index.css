@@ -117,7 +117,7 @@ body {
 }
 
 .cm-scroller {
-  padding: 2rem !important;
+  padding: 0.5rem 1rem !important;
   font-family: var(--font-sans) !important;
 }
 
@@ -129,13 +129,22 @@ body {
 .cm-md-heading {
   font-weight: 600;
   color: var(--text-main);
+  text-decoration: none !important;
+  border-bottom: none !important;
 }
-.cm-md-h1 { font-size: 2.25em; line-height: 1.3; padding-top: 0.5em; }
-.cm-md-h2 { font-size: 1.75em; line-height: 1.3; padding-top: 0.4em; }
-.cm-md-h3 { font-size: 1.5em; line-height: 1.3; padding-top: 0.3em; }
+.cm-md-h1 { font-size: 2.25em; line-height: 1.3; }
+.cm-md-h2 { font-size: 1.75em; line-height: 1.3; }
+.cm-md-h3 { font-size: 1.5em; line-height: 1.3; }
 .cm-md-h4 { font-size: 1.25em; line-height: 1.3; }
 .cm-md-h5 { font-size: 1.1em; line-height: 1.3; }
 .cm-md-h6 { font-size: 1em; line-height: 1.3; }
+
+/* Align gutter line numbers vertically */
+.cm-gutterElement {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+}
 
 .cm-md-bold {
   font-weight: 700;
@@ -166,8 +175,9 @@ body {
 }
 
 .cm-md-syntax {
-  opacity: 0.3;
-  font-size: 0.85em;
+  opacity: 0.5;
+  font-size: 0.9em;
+  font-weight: 400;
 }
 
 .cm-md-wikilink {

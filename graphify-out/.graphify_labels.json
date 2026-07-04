@@ -1,1 +1,25 @@
-{"0": "Sidebar & Utility Components", "1": "Build Configuration", "2": "Package Dependencies", "3": "Editors & Core Types", "4": "Graph Navigation Components", "5": "App Core & Settings", "6": "Markdown Live Preview", "7": "TypeScript Configuration", "8": "Electron Main Process", "9": "Dev Dependencies", "10": "Graphify Agents Config", "11": "Electron Dist Build", "12": "Documentation & Readme", "13": "Electron Preload Build", "14": "Electron Preload Source", "15": "Security Policy", "16": "React Entry Point", "17": "Vite Config"}
+{
+  "0": "Sidebar & Utility Components",
+  "1": "Build Configuration",
+  "2": "Package Dependencies",
+  "3": "Editors & Core Types",
+  "4": "Graph Navigation Components",
+  "5": "App Core & Settings",
+  "6": "Markdown Live Preview",
+  "7": "TypeScript Configuration",
+  "8": "Electron Main Process",
+  "9": "Dev Dependencies",
+  "10": "Graphify Agents Config",
+  "11": "Electron Dist Build",
+  "12": "Documentation & Readme",
+  "13": "Electron Preload Build",
+  "14": "Electron Preload Source",
+  "15": "Security Policy",
+  "16": "React Entry Point",
+  "17": "Vite Config",
+  "18": "Community 18",
+  "19": "Community 19",
+  "20": "Community 20",
+  "21": "Community 21",
+  "22": "Community 22"
+}

@@ -66,6 +66,9 @@ export function MarkdownEditor({ file, onChange, theme, settings }: Props) {
       ".cm-content": {
         fontFamily: "var(--font-sans)",
       },
+      "& [class^='tok-']": {
+        color: "inherit",
+      },
       ".cm-cursor": {
         borderLeftColor: "var(--accent)"
       },
@@ -147,21 +150,6 @@ export function MarkdownEditor({ file, onChange, theme, settings }: Props) {
 
   return (
     <div className="h-full flex flex-col relative bg-transparent">
-      {/* Title Area */}
-      <div className="flex items-center justify-between px-8 py-6 mb-2">
-        <div className="flex flex-col">
-          <input
-            type="text"
-            className="text-3xl font-bold bg-transparent outline-none text-[var(--text-main)] w-full placeholder:text-[var(--text-muted)]"
-            value={file.name}
-            readOnly
-          />
-          <span className="text-xs text-[var(--text-muted)] font-medium mt-1">
-            Last edited {new Date(file.updatedAt).toLocaleString()}
-          </span>
-        </div>
-      </div>
-
       {/* CodeMirror Editor Area */}
       <div 
         className="flex-1 overflow-hidden relative"
@@ -170,7 +158,7 @@ export function MarkdownEditor({ file, onChange, theme, settings }: Props) {
         <CodeMirror
           value={content}
           height="100%"
-          theme={theme === 'light' ? 'light' : 'dark'}
+          theme="none"
           extensions={extensions}
           onChange={handleChange}
           className="h-full w-full text-base"
@@ -185,6 +173,7 @@ export function MarkdownEditor({ file, onChange, theme, settings }: Props) {
             autocompletion: true,
             highlightActiveLine: false,
             highlightSelectionMatches: true,
+            defaultHighlightStyle: false,
           }}
           ref={editorRef}
         />
