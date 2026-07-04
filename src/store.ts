@@ -1,15 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
-import { WorkspaceFile, Theme, FileEntry, WorkspaceTab, AppSettings, FileType } from './types';
+import { WorkspaceFile, Theme, FileEntry, WorkspaceTab, AppSettings, FileType, TrashEntry, SearchResult } from './types';
 
 const STORAGE_KEY = 'precision-workspace-files';
 const THEME_KEY = 'precision-workspace-theme';
+const FAVORITES_KEY = 'precision-workspace-favorites';
 
 const INITIAL_FILES: WorkspaceFile[] = [
   {
     id: 'f1',
     name: 'Welcome',
     type: 'md',
-    content: '# Welcome to Precision Workspace\n\nThis is a glassmorphism-styled environment.\n\n- Beautiful typography\n- Three precision themes\n- Multiple file types',
+    content: '# Welcome to QuantaMD\n\nThis is a glassmorphism-styled environment.\n\n- Beautiful typography\n- Three precision themes\n- Multiple file types',
     createdAt: Date.now(),
     updatedAt: Date.now(),
     path: 'welcome.md'
@@ -19,9 +20,9 @@ const INITIAL_FILES: WorkspaceFile[] = [
     name: 'Project Roadmap',
     type: 'Tasks',
     content: JSON.stringify([
-      { id: 't1', title: 'Design System', description: 'Setup glassmorphism UI', status: 'done' },
-      { id: 't2', title: 'Kanban Board', description: 'Implement drag & drop tasks', status: 'in-progress' },
-      { id: 't3', title: 'Markdown Support', description: 'Add GFM support', status: 'todo' },
+      { id: 't1', title: 'Design System', description: 'Setup glassmorphism UI', status: 'done', priority: 'none' },
+      { id: 't2', title: 'Kanban Board', description: 'Implement drag & drop tasks', status: 'in-progress', priority: 'none' },
+      { id: 't3', title: 'Markdown Support', description: 'Add GFM support', status: 'todo', priority: 'none' },
     ]),
     createdAt: Date.now(),
     updatedAt: Date.now(),
@@ -57,9 +58,18 @@ export function useWorkspace() {
     defaultVaultPath: '',
     theme: 'dark',
     fontFamily: 'system-ui',
-    fontSize: 14
+    fontSize: 14,
+    accentColor: '210 100% 50%',
+    vimMode: false,
+    dailyNoteTemplate: '# {{date}}\n\n## Tasks\n\n- [ ] \n\n## Notes\n\n'
   });
   const [isLoaded, setIsLoaded] = useState(false);
+
+  // Favorites
+  const [favorites, setFavorites] = useState<string[]>([]);
+
+  // Trash
+  const [trashEntries, setTrashEntries] = useState<TrashEntry[]>([]);
 
   // Load configuration & initial files
   useEffect(() => {
@@ -67,12 +77,23 @@ export function useWorkspace() {
       if (isElectron && window.electronAPI) {
         try {
           const appSettings = await window.electronAPI.getSettings();
-          setSettings(appSettings);
-          setThemeState(appSettings.theme);
+          // Merge with defaults for new fields
+          const mergedSettings: AppSettings = {
+            geminiApiKey: appSettings.geminiApiKey || '',
+            defaultVaultPath: appSettings.defaultVaultPath || '',
+            theme: appSettings.theme || 'dark',
+            fontFamily: appSettings.fontFamily || 'system-ui',
+            fontSize: appSettings.fontSize || 14,
+            accentColor: appSettings.accentColor || '210 100% 50%',
+            vimMode: appSettings.vimMode || false,
+            dailyNoteTemplate: appSettings.dailyNoteTemplate || '# {{date}}\n\n## Tasks\n\n- [ ] \n\n## Notes\n\n'
+          };
+          setSettings(mergedSettings);
+          setThemeState(mergedSettings.theme as Theme);
           
-          if (appSettings.defaultVaultPath) {
-            setVaultPath(appSettings.defaultVaultPath);
-            const list = await window.electronAPI.readDirectory(appSettings.defaultVaultPath);
+          if (mergedSettings.defaultVaultPath) {
+            setVaultPath(mergedSettings.defaultVaultPath);
+            const list = await window.electronAPI.readDirectory(mergedSettings.defaultVaultPath);
             setFilesTree(list);
           }
         } catch (e) {
@@ -99,10 +120,28 @@ export function useWorkspace() {
           setThemeState(savedTheme);
         }
       }
+
+      // Load favorites
+      try {
+        const savedFavorites = localStorage.getItem(FAVORITES_KEY);
+        if (savedFavorites) {
+          setFavorites(JSON.parse(savedFavorites));
+        }
+      } catch {}
+
       setIsLoaded(true);
     }
     init();
   }, [isElectron]);
+
+  // Apply accent color to CSS variables
+  useEffect(() => {
+    if (!isLoaded) return;
+    const hsl = settings.accentColor || '210 100% 50%';
+    document.documentElement.style.setProperty('--accent-hsl', hsl);
+    document.documentElement.style.setProperty('--accent', `hsl(${hsl})`);
+    document.documentElement.style.setProperty('--accent-light', `hsl(${hsl} / 0.15)`);
+  }, [settings.accentColor, isLoaded]);
 
   // Sync theme to root class
   useEffect(() => {
@@ -117,6 +156,47 @@ export function useWorkspace() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(fileList));
     }
   }, [cachedFiles, isElectron, isLoaded]);
+
+  // Save favorites to localStorage
+  useEffect(() => {
+    if (isLoaded) {
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+    }
+  }, [favorites, isLoaded]);
+
+  // File watcher - listen for external changes
+  useEffect(() => {
+    if (!isElectron || !window.electronAPI?.onExternalFileChange) return;
+
+    const unsubscribe = window.electronAPI.onExternalFileChange((event) => {
+      console.log('External file change:', event);
+      // Refresh tree on any change
+      refreshTree();
+
+      // If an open file was changed externally, reload its content
+      if (event.type === 'change' && cachedFiles[event.path]) {
+        (async () => {
+          try {
+            if (window.electronAPI) {
+              const content = await window.electronAPI.readFile(event.path);
+              setCachedFiles(prev => {
+                const file = prev[event.path];
+                if (!file) return prev;
+                return {
+                  ...prev,
+                  [event.path]: { ...file, content, updatedAt: Date.now() }
+                };
+              });
+            }
+          } catch (e) {
+            console.error('Failed to reload externally changed file', e);
+          }
+        })();
+      }
+    });
+
+    return unsubscribe;
+  }, [isElectron, cachedFiles]);
 
   // Scan file explorer tree helper
   const refreshTree = useCallback(async () => {
@@ -239,6 +319,16 @@ export function useWorkspace() {
     }
   }, [tabs]);
 
+  // Move tab (drag reorder)
+  const moveTab = useCallback((fromIndex: number, toIndex: number) => {
+    setTabs(prev => {
+      const newTabs = [...prev];
+      const [movedTab] = newTabs.splice(fromIndex, 1);
+      newTabs.splice(toIndex, 0, movedTab);
+      return newTabs;
+    });
+  }, []);
+
   // Save file content
   const updateFileContent = useCallback(async (pathStr: string, newContent: string) => {
     setCachedFiles(prev => {
@@ -299,9 +389,28 @@ export function useWorkspace() {
     }
   }, [isElectron, vaultPath, refreshTree]);
 
-  // Delete a file or folder
+  // Delete a file or folder (soft delete to trash)
   const deleteEntry = useCallback(async (pathStr: string, isDirectory: boolean) => {
-    if (isElectron && window.electronAPI) {
+    if (isElectron && window.electronAPI && window.electronAPI.moveToTrash) {
+      try {
+        await window.electronAPI.moveToTrash(pathStr, isDirectory);
+        if (!isDirectory) {
+          closeTab(pathStr);
+          // Remove from cached files
+          setCachedFiles(prev => {
+            const updated = { ...prev };
+            delete updated[pathStr];
+            return updated;
+          });
+        }
+        await refreshTree();
+        // Refresh trash list
+        await refreshTrash();
+      } catch (err) {
+        console.error('Failed to move to trash', err);
+      }
+    } else if (isElectron && window.electronAPI) {
+      // Fallback to hard delete if moveToTrash not available
       try {
         if (isDirectory) {
           await window.electronAPI.deleteDirectory(pathStr);
@@ -333,7 +442,6 @@ export function useWorkspace() {
 
         // Update cached files if a file was renamed
         if (!isDirectory) {
-          const oldName = oldPathStr.substring(oldPathStr.lastIndexOf('\\') + 1).replace(/\.(md|tasks|board)$/, '');
           const newName = newPathStr.substring(newPathStr.lastIndexOf('\\') + 1).replace(/\.(md|tasks|board)$/, '');
           const ext = newPathStr.substring(newPathStr.lastIndexOf('.'));
           const type: FileType = ext === '.md' ? 'md' : ext === '.tasks' ? 'Tasks' : 'Board';
@@ -357,6 +465,9 @@ export function useWorkspace() {
           if (activeTabId === oldPathStr) {
             setActiveTabId(newPathStr);
           }
+
+          // Update favorites
+          setFavorites(prev => prev.map(f => f === oldPathStr ? newPathStr : f));
         }
       } catch (err) {
         console.error('Failed to rename path', err);
@@ -369,6 +480,191 @@ export function useWorkspace() {
       window.electronAPI.showInExplorer(pathStr);
     }
   }, [isElectron]);
+
+  // Favorites management
+  const toggleFavorite = useCallback((pathStr: string) => {
+    setFavorites(prev => {
+      if (prev.includes(pathStr)) {
+        return prev.filter(f => f !== pathStr);
+      }
+      return [...prev, pathStr];
+    });
+  }, []);
+
+  const isFavorite = useCallback((pathStr: string) => {
+    return favorites.includes(pathStr);
+  }, [favorites]);
+
+  // Trash management
+  const refreshTrash = useCallback(async () => {
+    if (isElectron && window.electronAPI?.listTrash && vaultPath) {
+      try {
+        const entries = await window.electronAPI.listTrash(vaultPath);
+        setTrashEntries(entries);
+      } catch (e) {
+        console.error('Failed to list trash', e);
+      }
+    }
+  }, [isElectron, vaultPath]);
+
+  const restoreFromTrash = useCallback(async (entry: TrashEntry) => {
+    if (isElectron && window.electronAPI?.restoreFromTrash) {
+      try {
+        await window.electronAPI.restoreFromTrash(entry);
+        await refreshTrash();
+        await refreshTree();
+      } catch (e) {
+        console.error('Failed to restore from trash', e);
+      }
+    }
+  }, [isElectron, refreshTrash, refreshTree]);
+
+  const permanentDeleteTrash = useCallback(async (trashPath: string) => {
+    if (isElectron && window.electronAPI?.permanentDeleteTrash) {
+      try {
+        await window.electronAPI.permanentDeleteTrash(trashPath);
+        await refreshTrash();
+      } catch (e) {
+        console.error('Failed to permanently delete', e);
+      }
+    }
+  }, [isElectron, refreshTrash]);
+
+  const emptyTrash = useCallback(async () => {
+    if (isElectron && window.electronAPI?.emptyTrash && vaultPath) {
+      try {
+        await window.electronAPI.emptyTrash(vaultPath);
+        setTrashEntries([]);
+      } catch (e) {
+        console.error('Failed to empty trash', e);
+      }
+    }
+  }, [isElectron, vaultPath]);
+
+  // Load trash on vault open
+  useEffect(() => {
+    if (vaultPath && isLoaded) {
+      refreshTrash();
+    }
+  }, [vaultPath, isLoaded, refreshTrash]);
+
+  // Full-text search
+  const searchVault = useCallback(async (query: string, options: { regex?: boolean; caseSensitive?: boolean } = {}): Promise<SearchResult[]> => {
+    if (!query.trim()) return [];
+
+    if (isElectron && window.electronAPI?.searchFiles && vaultPath) {
+      try {
+        return await window.electronAPI.searchFiles(vaultPath, query, options);
+      } catch (e) {
+        console.error('Search failed', e);
+        return [];
+      }
+    } else {
+      // Web fallback: search cached files
+      const results: SearchResult[] = [];
+      const files = Object.values(cachedFiles);
+      
+      for (const file of files) {
+        if (file.type !== 'md') continue;
+        const lines = file.content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          let matchIndex = -1;
+          
+          if (options.regex) {
+            try {
+              const re = new RegExp(query, options.caseSensitive ? 'g' : 'gi');
+              const match = re.exec(line);
+              if (match) matchIndex = match.index;
+            } catch {}
+          } else {
+            const searchIn = options.caseSensitive ? line : line.toLowerCase();
+            const searchFor = options.caseSensitive ? query : query.toLowerCase();
+            matchIndex = searchIn.indexOf(searchFor);
+          }
+
+          if (matchIndex >= 0) {
+            results.push({
+              filePath: file.path,
+              fileName: file.name,
+              fileType: file.type,
+              lineNumber: i + 1,
+              lineContent: line,
+              matchStart: matchIndex,
+              matchEnd: matchIndex + query.length
+            });
+            if (results.length >= 200) return results;
+          }
+        }
+      }
+      return results;
+    }
+  }, [isElectron, vaultPath, cachedFiles]);
+
+  // Daily notes
+  const openDailyNote = useCallback(async (date: string) => {
+    if (!vaultPath) return;
+
+    if (isElectron && window.electronAPI?.createDailyNote) {
+      try {
+        const filePath = await window.electronAPI.createDailyNote(
+          vaultPath, 
+          date, 
+          settings.dailyNoteTemplate
+        );
+        await refreshTree();
+        const name = date;
+        await openFile(filePath, 'md', name);
+      } catch (e) {
+        console.error('Failed to create daily note', e);
+      }
+    } else {
+      // Web fallback: create in-memory
+      const id = `daily-${date}`;
+      if (!cachedFiles[id]) {
+        const template = settings.dailyNoteTemplate
+          .replace(/\{\{date\}\}/g, date)
+          .replace(/\{\{day\}\}/g, new Date(date).toLocaleDateString('en-US', { weekday: 'long' }))
+          .replace(/\{\{time\}\}/g, new Date().toLocaleTimeString());
+
+        const newFile: WorkspaceFile = {
+          id,
+          name: date,
+          type: 'md',
+          content: template,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          path: id
+        };
+        setCachedFiles(prev => ({ ...prev, [id]: newFile }));
+      }
+      openFile(id, 'md', date);
+    }
+  }, [vaultPath, isElectron, settings.dailyNoteTemplate, refreshTree, openFile, cachedFiles]);
+
+  // Get list of existing daily note dates
+  const getDailyNoteDates = useCallback((): string[] => {
+    const dates: string[] = [];
+    const scanForDailyNotes = (entries: FileEntry[]) => {
+      for (const entry of entries) {
+        if (entry.isDirectory && entry.children) {
+          if (entry.name === 'daily') {
+            for (const child of entry.children) {
+              if (!child.isDirectory && child.type === 'md') {
+                // Extract date from filename (YYYY-MM-DD)
+                const match = child.name.match(/^(\d{4}-\d{2}-\d{2})$/);
+                if (match) dates.push(match[1]);
+              }
+            }
+          } else {
+            scanForDailyNotes(entry.children);
+          }
+        }
+      }
+    };
+    scanForDailyNotes(filesTree);
+    return dates;
+  }, [filesTree]);
 
   return {
     isElectron,
@@ -393,6 +689,20 @@ export function useWorkspace() {
     closeVault,
     openFile,
     closeTab,
-    showFileInExplorer
+    moveTab,
+    showFileInExplorer,
+    // New v1.0
+    favorites,
+    toggleFavorite,
+    isFavorite,
+    trashEntries,
+    restoreFromTrash,
+    permanentDeleteTrash,
+    emptyTrash,
+    refreshTrash,
+    searchVault,
+    openDailyNote,
+    getDailyNoteDates,
+    refreshTree
   };
 }

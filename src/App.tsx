@@ -1,29 +1,34 @@
-import { useState, useEffect } from 'react';
-import { useWorkspace } from './store';
-import { Sidebar } from './components/Sidebar';
+import { useState, useEffect, useRef } from 'react';
 import { TitleBar } from './components/TitleBar';
-import { SettingsModal } from './components/SettingsModal';
-import { CommandPalette } from './components/CommandPalette';
-import { AiAssistant } from './components/AiAssistant';
-import { GraphView } from './components/GraphView';
+import { Sidebar } from './components/Sidebar';
 import { MarkdownEditor } from './components/editors/MarkdownEditor';
 import { TasksEditor } from './components/editors/TasksEditor';
 import { BoardEditor } from './components/editors/BoardEditor';
-
-import { Layers, Sparkles, X, Settings, FileText, CheckSquare, Grid, Plus, Keyboard } from 'lucide-react';
+import { AiAssistant } from './components/AiAssistant';
+import { SettingsModal } from './components/SettingsModal';
+import { CommandPalette } from './components/CommandPalette';
+import { SearchPanel } from './components/SearchPanel';
+import { BacklinksPanel } from './components/BacklinksPanel';
+import { OutlinePanel } from './components/OutlinePanel';
+import { StatusBar } from './components/StatusBar';
+import { Breadcrumbs } from './components/Breadcrumbs';
+import { GraphView } from './components/GraphView';
+import { useWorkspace } from './store';
 import { FileType } from './types';
+import { X, Bot, Hash, Link as LinkIcon, Command, Search } from 'lucide-react';
+import { cn } from './lib/utils';
 
-export default function App() {
+type RightPanelMode = 'none' | 'ai' | 'outline' | 'backlinks';
+
+function App() {
   const {
     isElectron,
     vaultPath,
     filesTree,
     tabs,
-    setTabs,
     activeTabId,
-    setActiveTabId,
-    cachedFiles,
     activeFile,
+    cachedFiles,
     updateFileContent,
     addFile,
     addDirectory,
@@ -37,232 +42,298 @@ export default function App() {
     closeVault,
     openFile,
     closeTab,
-    showFileInExplorer
+    moveTab,
+    showFileInExplorer,
+    favorites,
+    toggleFavorite,
+    isFavorite,
+    trashEntries,
+    restoreFromTrash,
+    permanentDeleteTrash,
+    emptyTrash,
+    searchVault,
+    openDailyNote,
+    getDailyNoteDates,
+    refreshTree
   } = useWorkspace();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isPaletteOpen, setIsPaletteOpen] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [showGraph, setShowGraph] = useState(false);
-  const [isAiOpen, setIsAiOpen] = useState(true);
+  
+  // New layout state
+  const [showSearchPanel, setShowSearchPanel] = useState(false);
+  const [rightPanelMode, setRightPanelMode] = useState<RightPanelMode>('ai');
 
-  // Setup global hotkeys
+  // Drag and drop tabs state
+  const [draggedTabIdx, setDraggedTabIdx] = useState<number | null>(null);
+  
+  // Editor ref for inserting text
+  const editorRef = useRef<any>(null);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl+P / Cmd+P for Command Palette
+      // Toggle Command Palette (Ctrl+P or Cmd+P)
       if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
         e.preventDefault();
-        setIsPaletteOpen(prev => !prev);
+        setIsCommandPaletteOpen(prev => !prev);
       }
-      // Ctrl+Comma for Settings
-      if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+      // Toggle Search Panel (Ctrl+Shift+F)
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'F') {
         e.preventDefault();
-        setIsSettingsOpen(prev => !prev);
+        setShowSearchPanel(true);
+      }
+      // Close tab (Ctrl+W)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'w') {
+        if (activeTabId) {
+          e.preventDefault();
+          closeTab(activeTabId);
+        }
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [activeTabId, closeTab]);
 
-  // Open file helper
-  const handleOpenFile = (path: string, type: FileType, name: string) => {
-    setShowGraph(false);
-    openFile(path, type, name);
+  const toggleRightPanel = (mode: RightPanelMode) => {
+    setRightPanelMode(prev => prev === mode ? 'none' : mode);
   };
 
-  const getTabIcon = (type: FileType) => {
-    if (type === 'md') return <FileText size={12} className="text-[var(--accent)]" />;
-    if (type === 'Tasks') return <CheckSquare size={12} className="text-[var(--accent)]" />;
-    return <Grid size={12} className="text-[var(--accent)]" />;
+  const handleInsertContent = (content: string) => {
+    if (activeFile && activeFile.type === 'md' && activeTabId) {
+      // Very simple insertion: just append to content if we can't get the editor ref easily
+      updateFileContent(activeTabId, activeFile.content + '\n' + content);
+    }
+  };
+
+  const handleTabDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedTabIdx(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleTabDrop = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedTabIdx !== null && draggedTabIdx !== index) {
+      moveTab(draggedTabIdx, index);
+    }
+    setDraggedTabIdx(null);
   };
 
   return (
-    <div className="flex flex-col h-screen w-full overflow-hidden bg-[var(--bg-base)] text-[var(--text-main)] font-sans antialiased selection:bg-[var(--accent)] selection:text-white">
-      {/* Frameless TitleBar Wrapper */}
-      <TitleBar vaultPath={vaultPath} activeFileName={activeFile ? activeFile.name : null} />
+    <div className={cn("h-screen flex flex-col overflow-hidden transition-colors duration-300", theme === 'light' ? 'bg-[#f5f5f7]' : theme === 'amoled' ? 'bg-black' : 'bg-[#1c1c1e]')}>
+      {isElectron && <TitleBar vaultPath={vaultPath} activeFileName={activeFile?.name || null} />}
 
-      {/* Main App Workspace Layout */}
-      <div className="flex-1 flex w-full overflow-hidden">
-        {/* Left Sidebar */}
-        <Sidebar
-          isElectron={isElectron}
-          vaultPath={vaultPath}
-          filesTree={filesTree}
-          activeFileId={activeFile ? activeFile.path : null}
-          onSelectFile={handleOpenFile}
-          onAddFile={addFile}
-          onAddDirectory={addDirectory}
-          onDeleteEntry={deleteEntry}
-          onRenameEntry={renameEntry}
-          theme={theme}
-          setTheme={setTheme}
-          onSelectVault={selectVault}
-          onCloseVault={closeVault}
-          onOpenSettings={() => setIsSettingsOpen(true)}
-          onToggleGraph={() => {
-            setShowGraph(prev => !prev);
-            setActiveTabId(''); // deselect active tab
-          }}
-          showGraph={showGraph}
-          onShowInExplorer={showFileInExplorer}
-        />
-
-        {/* Editor or Graph view panel */}
-        <div className="flex-1 flex flex-col min-w-0 relative">
-          {vaultPath ? (
-            <>
-              {/* Tab Header bar */}
-              <div className="h-11 w-full bg-[var(--bg-sidebar)] border-b border-[var(--border-glass-strong)] flex items-center justify-between px-4 select-none">
-                <div className="flex items-center gap-1.5 overflow-x-auto flex-1 h-full py-1 pr-4 no-scrollbar">
-                  {tabs.map(tab => {
-                    const isTabActive = activeTabId === tab.fileId && !showGraph;
-                    return (
-                      <div
-                        key={tab.fileId}
-                        onClick={() => {
-                          setShowGraph(false);
-                          setActiveTabId(tab.fileId);
-                        }}
-                        className={`group flex items-center gap-2 px-3.5 h-full rounded-xl text-xs font-semibold cursor-pointer transition-all border border-transparent ${
-                          isTabActive
-                            ? 'bg-[var(--bg-glass)] border-[var(--border-glass)] text-[var(--text-main)] shadow-sm'
-                            : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5'
-                        }`}
-                      >
-                        {getTabIcon(tab.type)}
-                        <span className="truncate max-w-[120px]">{tab.name}</span>
-                        <button
-                          onClick={e => {
-                            e.stopPropagation();
-                            closeTab(tab.fileId);
-                          }}
-                          className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/15 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-opacity"
-                        >
-                          <X size={10} />
-                        </button>
-                      </div>
-                    );
-                  })}
-                  
-                  {tabs.length === 0 && !showGraph && (
-                    <span className="text-[10px] text-[var(--text-muted)] font-medium italic">
-                      No files open
-                    </span>
-                  )}
-                </div>
-
-                {/* Right utility buttons on tab bar */}
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setIsAiOpen(prev => !prev)}
-                    className={`p-1.5 rounded-lg border border-[var(--border-glass)] hover:bg-black/5 dark:hover:bg-white/10 transition-all ${
-                      isAiOpen ? 'text-[var(--accent)] bg-[var(--accent-light)]' : 'text-[var(--text-muted)]'
-                    }`}
-                    title="Toggle AI Copilot"
-                  >
-                    <Sparkles size={14} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Main Content Area */}
-              <div className="flex-1 relative overflow-hidden">
-                {showGraph ? (
-                  <GraphView
-                    files={filesTree}
-                    cachedFiles={cachedFiles}
-                    onOpenFile={handleOpenFile}
-                  />
-                ) : activeFile ? (
-                  <div className="absolute inset-0 p-6 md:p-8 overflow-y-auto">
-                    {activeFile.type === 'md' && (
-                      <MarkdownEditor
-                        key={activeFile.id}
-                        file={activeFile}
-                        onChange={c => updateFileContent(activeFile.id, c)}
-                      />
-                    )}
-                    {activeFile.type === 'Tasks' && (
-                      <TasksEditor
-                        key={activeFile.id}
-                        file={activeFile}
-                        onChange={c => updateFileContent(activeFile.id, c)}
-                      />
-                    )}
-                    {activeFile.type === 'Board' && (
-                      <BoardEditor
-                        key={activeFile.id}
-                        file={activeFile}
-                        onChange={c => updateFileContent(activeFile.id, c)}
-                      />
-                    )}
-                  </div>
-                ) : (
-                  /* Dashboard view */
-                  <div className="h-full w-full flex flex-col items-center justify-center text-center max-w-md mx-auto px-6">
-                    <div className="w-16 h-16 mb-6 rounded-3xl bg-[var(--bg-glass)] border border-[var(--border-glass)] shadow-[var(--shadow-glass)] flex items-center justify-center text-[var(--accent)] backdrop-blur-xl">
-                      <Layers size={30} strokeWidth={1.5} />
-                    </div>
-                    <h2 className="text-2xl font-bold mb-2 tracking-tight">Welcome to QuantaMD</h2>
-                    <p className="text-[var(--text-muted)] text-xs leading-relaxed mb-6">
-                      An open-source Obsidian-inspired desktop environment with local filesystem syncing and inline AI document copilots.
-                    </p>
-
-                    <div className="grid grid-cols-2 gap-3 w-full">
-                      <button
-                        onClick={() => addFile('New Note', 'md')}
-                        className="flex flex-col items-center gap-2 p-4 bg-[var(--bg-sidebar)] hover:bg-black/5 dark:hover:bg-white/5 border border-[var(--border-glass)] rounded-2xl transition-all cursor-pointer"
-                      >
-                        <Plus size={16} className="text-[var(--accent)]" />
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-main)]">New Note</span>
-                      </button>
-                      <button
-                        onClick={() => setShowGraph(true)}
-                        className="flex flex-col items-center gap-2 p-4 bg-[var(--bg-sidebar)] hover:bg-black/5 dark:hover:bg-white/5 border border-[var(--border-glass)] rounded-2xl transition-all cursor-pointer"
-                      >
-                        <Layers size={16} className="text-[var(--accent)]" />
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-main)]">Graph View</span>
-                      </button>
-                    </div>
-
-                    <div className="mt-8 flex items-center gap-2 px-4 py-2 bg-[var(--bg-sidebar)] border border-[var(--border-glass)] rounded-full text-[10px] text-[var(--text-muted)] font-semibold">
-                      <Keyboard size={12} />
-                      <span>Press Ctrl + P to search and run commands</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </>
-          ) : (
-            /* Choose vault landing page */
-            <div className="h-full flex flex-col items-center justify-center text-center max-w-sm mx-auto px-6">
-              <div className="w-20 h-20 mb-6 rounded-3xl bg-[var(--bg-glass)] border border-[var(--border-glass)] shadow-[var(--shadow-glass)] flex items-center justify-center text-[var(--accent)] backdrop-blur-xl">
-                <Layers size={36} strokeWidth={1.5} />
-              </div>
-              <h2 className="text-3xl font-extrabold tracking-tight mb-2">QuantaMD Workspace</h2>
-              <p className="text-[var(--text-muted)] text-sm leading-relaxed mb-8">
-                To begin, select a local folder on your computer to open as your vault directory.
-              </p>
-              <button
-                onClick={selectVault}
-                className="px-6 py-3 bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 rounded-2xl text-sm font-bold shadow-lg shadow-[var(--accent-light)] transition-all flex items-center gap-2"
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Sidebar or Search Panel */}
+        {showSearchPanel ? (
+          <div className="w-80 flex-shrink-0 border-r border-[var(--border-glass-strong)] bg-[var(--bg-sidebar)] flex flex-col h-full">
+            <div className="p-3 border-b border-[var(--border-glass)] flex justify-between items-center bg-black/5 dark:bg-white/5">
+              <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-2">
+                <Search size={14} /> Global Search
+              </span>
+              <button 
+                onClick={() => setShowSearchPanel(false)}
+                className="p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 text-[var(--text-muted)]"
               >
-                Choose Local Folder
+                <X size={14} />
               </button>
             </div>
-          )}
+            <div className="flex-1 overflow-hidden relative">
+              <SearchPanel
+                vaultPath={vaultPath}
+                isElectron={isElectron}
+                onOpenFile={(path, type, name) => {
+                  openFile(path, type, name);
+                  setShowSearchPanel(false);
+                }}
+                cachedFiles={cachedFiles}
+              />
+            </div>
+          </div>
+        ) : (
+          <Sidebar
+            isElectron={isElectron}
+            vaultPath={vaultPath}
+            filesTree={filesTree}
+            activeFileId={activeTabId}
+            onSelectFile={openFile}
+            onAddFile={addFile}
+            onAddDirectory={addDirectory}
+            onDeleteEntry={deleteEntry}
+            onRenameEntry={renameEntry}
+            theme={theme}
+            setTheme={setTheme}
+            onSelectVault={selectVault}
+            onCloseVault={closeVault}
+            onOpenSettings={() => setIsSettingsOpen(true)}
+            onToggleGraph={() => setShowGraph(!showGraph)}
+            showGraph={showGraph}
+            onShowInExplorer={showFileInExplorer}
+            favorites={favorites}
+            onToggleFavorite={toggleFavorite}
+            isFavorite={isFavorite}
+            cachedFiles={cachedFiles}
+            onOpenSearch={() => setIsCommandPaletteOpen(true)}
+            onOpenDailyNote={openDailyNote}
+            existingDailyNotes={getDailyNoteDates()}
+            trashEntries={trashEntries}
+            onRestoreFromTrash={restoreFromTrash}
+            onPermanentDeleteTrash={permanentDeleteTrash}
+            onEmptyTrash={emptyTrash}
+            onTagClick={(tag) => {
+              // Open search panel with tag query
+              // For simplicity, we just toggle command palette for now
+              setIsCommandPaletteOpen(true); 
+            }}
+          />
+        )}
+
+        {/* Main Editor Area */}
+        <div className="flex-1 flex flex-col relative z-0 min-w-0">
+          {/* Tab Bar */}
+          <div className="flex bg-[var(--bg-sidebar)] border-b border-[var(--border-glass)] backdrop-blur-md overflow-x-auto no-scrollbar pl-2 pr-4 pt-2">
+            {tabs.map((tab, idx) => (
+              <div
+                key={tab.fileId}
+                draggable
+                onDragStart={(e) => handleTabDragStart(e, idx)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => handleTabDrop(e, idx)}
+                onClick={() => openFile(tab.fileId, tab.type, tab.name)}
+                className={cn(
+                  "group flex items-center gap-2 px-4 py-2 min-w-[120px] max-w-[200px] border-r border-t border-l rounded-t-xl cursor-pointer transition-all select-none -mb-[1px] cursor-grab active:cursor-grabbing",
+                  activeTabId === tab.fileId
+                    ? "bg-[var(--bg-base)] border-[var(--border-glass-strong)] text-[var(--text-main)] font-semibold shadow-[0_-2px_10px_rgba(0,0,0,0.05)] z-10"
+                    : "bg-transparent border-transparent text-[var(--text-muted)] hover:bg-[var(--bg-glass)] z-0"
+                )}
+              >
+                <div className={cn("w-2 h-2 rounded-full", tab.type === 'md' ? 'bg-blue-500' : tab.type === 'Tasks' ? 'bg-green-500' : 'bg-orange-500')} />
+                <span className="truncate flex-1 text-sm">{tab.name}</span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    closeTab(tab.fileId);
+                  }}
+                  className={cn(
+                    "p-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 transition-all",
+                    activeTabId === tab.fileId && "opacity-100"
+                  )}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+
+            <div className="flex-1" />
+            
+            {/* Right Panel Toggles */}
+            <div className="flex items-center gap-1 pb-1">
+              {activeFile?.type === 'md' && (
+                <button
+                  onClick={() => toggleRightPanel('outline')}
+                  className={cn("p-1.5 rounded-lg transition-colors", rightPanelMode === 'outline' ? "bg-[var(--accent)] text-white" : "hover:bg-[var(--bg-glass)] text-[var(--text-muted)]")}
+                  title="Toggle Outline"
+                >
+                  <Hash size={14} />
+                </button>
+              )}
+              <button
+                onClick={() => toggleRightPanel('backlinks')}
+                className={cn("p-1.5 rounded-lg transition-colors", rightPanelMode === 'backlinks' ? "bg-[var(--accent)] text-white" : "hover:bg-[var(--bg-glass)] text-[var(--text-muted)]")}
+                title="Toggle Backlinks"
+              >
+                <LinkIcon size={14} />
+              </button>
+              <button
+                onClick={() => toggleRightPanel('ai')}
+                className={cn("p-1.5 rounded-lg transition-colors", rightPanelMode === 'ai' ? "bg-[var(--accent)] text-white" : "hover:bg-[var(--bg-glass)] text-[var(--text-muted)]")}
+                title="Toggle AI Copilot"
+              >
+                <Bot size={14} />
+              </button>
+            </div>
+          </div>
+
+          {/* Breadcrumbs */}
+          <Breadcrumbs 
+            vaultPath={vaultPath}
+            activeFilePath={activeFile?.path || null}
+            activeFileName={activeFile?.name || null}
+            activeFileType={activeFile?.type || null}
+          />
+
+          {/* Editor Content */}
+          <div className="flex-1 relative overflow-hidden bg-[var(--bg-base)]">
+            {showGraph ? (
+              <GraphView files={filesTree} cachedFiles={cachedFiles} onOpenFile={openFile} />
+            ) : activeFile ? (
+              activeFile.type === 'md' ? (
+                <MarkdownEditor 
+                  file={activeFile} 
+                  onChange={(val) => updateFileContent(activeTabId!, val)} 
+                  theme={theme}
+                  vimMode={settings.vimMode}
+                />
+              ) : activeFile.type === 'Tasks' ? (
+                <TasksEditor 
+                  file={activeFile} 
+                  onChange={(val) => updateFileContent(activeTabId!, val)} 
+                />
+              ) : (
+                <BoardEditor 
+                  file={activeFile} 
+                  onChange={(val) => updateFileContent(activeTabId!, val)} 
+                />
+              )
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center text-[var(--text-muted)]">
+                <Command size={48} className="mb-4 opacity-20" />
+                <p className="text-sm font-medium mb-2">Select a file or press <kbd className="bg-black/10 dark:bg-white/10 px-2 py-0.5 rounded ml-1">Ctrl+P</kbd> to search</p>
+              </div>
+            )}
+          </div>
+          
+          {/* Status Bar */}
+          <StatusBar 
+            activeFile={activeFile}
+            vimMode={settings.vimMode}
+          />
         </div>
 
-        {/* Right Collapsible AI Panel */}
-        {vaultPath && isAiOpen && (
-          <AiAssistant
-            activeFile={activeFile}
-            geminiApiKey={settings.geminiApiKey}
-          />
+        {/* Dynamic Right Panel */}
+        {rightPanelMode !== 'none' && (
+          <div className="w-80 flex-shrink-0 flex flex-col h-full z-10 bg-[var(--bg-sidebar)] border-l border-[var(--border-glass-strong)] shadow-[-10px_0_30px_rgba(0,0,0,0.05)]">
+            {rightPanelMode === 'ai' && (
+              <AiAssistant
+                apiKey={settings.geminiApiKey}
+                activeFileContent={activeFile?.content || ''}
+                activeFileName={activeFile?.name || ''}
+                onInsertContent={handleInsertContent}
+              />
+            )}
+            
+            {rightPanelMode === 'outline' && activeFile?.type === 'md' && (
+              <OutlinePanel 
+                content={activeFile.content}
+                onScrollToHeading={(line) => {
+                  // Scrolling implementation would ideally dispatch to CodeMirror View
+                  console.log('Scroll to line', line);
+                }}
+              />
+            )}
+            
+            {rightPanelMode === 'backlinks' && (
+              <BacklinksPanel 
+                activeFile={activeFile ? { name: activeFile.name, path: activeFile.path } : null}
+                cachedFiles={cachedFiles}
+                onOpenFile={openFile}
+              />
+            )}
+          </div>
         )}
       </div>
 
-      {/* Global Modals */}
+      {/* Overlays */}
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
@@ -272,18 +343,26 @@ export default function App() {
       />
 
       <CommandPalette
-        isOpen={isPaletteOpen}
-        onClose={() => setIsPaletteOpen(false)}
-        files={filesTree}
-        onOpenFile={handleOpenFile}
-        onAddFile={addFile}
-        onSetTheme={setTheme}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-        onToggleGraph={() => {
-          setShowGraph(true);
-          setActiveTabId('');
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        filesTree={filesTree}
+        onSelectFile={openFile}
+        onAddFile={() => {
+          if (vaultPath) addFile('New File', 'md');
         }}
+        onAddFolder={() => {
+          if (vaultPath) addDirectory('New Folder');
+        }}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        onToggleVim={() => saveAppSettings({ vimMode: !settings.vimMode })}
+        onToggleFavorites={() => activeFile && toggleFavorite(activeFile.path)}
+        onOpenSearchPanel={() => setShowSearchPanel(true)}
+        onToggleBacklinks={() => toggleRightPanel('backlinks')}
+        onToggleOutline={() => toggleRightPanel('outline')}
+        onToggleAi={() => toggleRightPanel('ai')}
       />
     </div>
   );
 }
+
+export default App;

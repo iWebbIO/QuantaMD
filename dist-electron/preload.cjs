@@ -19,6 +19,21 @@ import_electron.contextBridge.exposeInMainWorld("electronAPI", {
   deleteFile: (filePath) => import_electron.ipcRenderer.invoke("fs:deleteFile", filePath),
   deleteDirectory: (dirPath) => import_electron.ipcRenderer.invoke("fs:deleteDirectory", dirPath),
   renameEntry: (oldPath, newPath) => import_electron.ipcRenderer.invoke("fs:renameEntry", oldPath, newPath),
-  showInExplorer: (filePath) => import_electron.ipcRenderer.invoke("fs:showInExplorer", filePath)
+  showInExplorer: (filePath) => import_electron.ipcRenderer.invoke("fs:showInExplorer", filePath),
+  // New v1.0 APIs
+  searchFiles: (vaultPath, query, options) => import_electron.ipcRenderer.invoke("fs:searchFiles", vaultPath, query, options),
+  moveToTrash: (filePath, isDirectory) => import_electron.ipcRenderer.invoke("fs:moveToTrash", filePath, isDirectory),
+  restoreFromTrash: (trashEntry) => import_electron.ipcRenderer.invoke("fs:restoreFromTrash", trashEntry),
+  listTrash: (vaultPath) => import_electron.ipcRenderer.invoke("fs:listTrash", vaultPath),
+  emptyTrash: (vaultPath) => import_electron.ipcRenderer.invoke("fs:emptyTrash", vaultPath),
+  permanentDeleteTrash: (trashPath) => import_electron.ipcRenderer.invoke("fs:permanentDeleteTrash", trashPath),
+  createDailyNote: (vaultPath, date, template) => import_electron.ipcRenderer.invoke("fs:createDailyNote", vaultPath, date, template),
+  onExternalFileChange: (callback) => {
+    const handler = (_event, data) => callback(data);
+    import_electron.ipcRenderer.on("fs:external-change", handler);
+    return () => {
+      import_electron.ipcRenderer.removeListener("fs:external-change", handler);
+    };
+  }
 });
 //# sourceMappingURL=preload.cjs.map

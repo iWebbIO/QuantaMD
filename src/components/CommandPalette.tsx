@@ -1,131 +1,73 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, FileText, CheckSquare, Grid, Settings, Moon, Sun, Layers, Terminal } from 'lucide-react';
+import { Search, FileText, CheckSquare, Grid, Command, FolderPlus, FilePlus, Settings, Hash, Link as LinkIcon, Calendar, ArrowRight, Star } from 'lucide-react';
 import { FileEntry, FileType } from '../types';
+import { cn } from '../lib/utils';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  files: FileEntry[];
-  onOpenFile: (path: string, type: FileType, name: string) => void;
-  onAddFile: (name: string, type: FileType) => void;
-  onSetTheme: (theme: any) => void;
+  filesTree: FileEntry[];
+  onSelectFile: (path: string, type: FileType, name: string) => void;
+  onAddFile: () => void;
+  onAddFolder: () => void;
   onOpenSettings: () => void;
-  onToggleGraph: () => void;
+  // New v1.0 commands
+  onToggleVim: () => void;
+  onToggleFavorites: () => void;
+  onOpenSearchPanel: () => void;
+  onToggleBacklinks: () => void;
+  onToggleOutline: () => void;
+  onToggleAi: () => void;
 }
 
-interface PaletteCommand {
-  id: string;
-  title: string;
-  subtitle?: string;
-  icon: React.ReactNode;
-  action: () => void;
-}
-
-export function CommandPalette({
-  isOpen,
-  onClose,
-  files,
-  onOpenFile,
-  onAddFile,
-  onSetTheme,
+export function CommandPalette({ 
+  isOpen, 
+  onClose, 
+  filesTree, 
+  onSelectFile, 
+  onAddFile, 
+  onAddFolder, 
   onOpenSettings,
-  onToggleGraph
+  onToggleVim,
+  onToggleFavorites,
+  onOpenSearchPanel,
+  onToggleBacklinks,
+  onToggleOutline,
+  onToggleAi
 }: Props) {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
-  const resultsRef = useRef<HTMLDivElement>(null);
 
-  // Flat list of files helper
-  const getFlatFiles = (list: FileEntry[]): { name: string; path: string; type: FileType }[] => {
-    let result: { name: string; path: string; type: FileType }[] = [];
-    list.forEach(item => {
-      if (item.isDirectory && item.children) {
-        result = [...result, ...getFlatFiles(item.children)];
-      } else if (item.type && item.type !== 'folder') {
-        result.push({
-          name: item.name,
-          path: item.path,
-          type: item.type as FileType
-        });
+  // Flatten file tree for search
+  const allFiles: { path: string; name: string; type: FileType }[] = [];
+  const traverse = (entries: FileEntry[]) => {
+    for (const entry of entries) {
+      if (entry.isDirectory && entry.children) {
+        traverse(entry.children);
+      } else if (!entry.isDirectory && entry.type && entry.type !== 'folder') {
+        allFiles.push({ path: entry.path, name: entry.name, type: entry.type as FileType });
       }
-    });
-    return result;
-  };
-
-  const flatFiles = getFlatFiles(files);
-
-  // Define global commands
-  const commands: PaletteCommand[] = [
-    {
-      id: 'cmd-new-md',
-      title: 'Create new Markdown Note',
-      subtitle: 'Create a blank text page',
-      icon: <FileText size={16} className="text-[var(--accent)]" />,
-      action: () => onAddFile('New Note', 'md')
-    },
-    {
-      id: 'cmd-new-tasks',
-      title: 'Create new Tasks Board',
-      subtitle: 'Setup a task status board',
-      icon: <CheckSquare size={16} className="text-[var(--accent)]" />,
-      action: () => onAddFile('Tasks List', 'Tasks')
-    },
-    {
-      id: 'cmd-new-board',
-      title: 'Create new Kanban Board',
-      subtitle: 'Setup a card inspiration board',
-      icon: <Grid size={16} className="text-[var(--accent)]" />,
-      action: () => onAddFile('Board Grid', 'Board')
-    },
-    {
-      id: 'cmd-theme-light',
-      title: 'Switch to Light Theme',
-      subtitle: 'Change interface colors to light',
-      icon: <Sun size={16} className="text-amber-500" />,
-      action: () => onSetTheme('light')
-    },
-    {
-      id: 'cmd-theme-dark',
-      title: 'Switch to Dark Theme',
-      subtitle: 'Change interface colors to dark',
-      icon: <Moon size={16} className="text-indigo-400" />,
-      action: () => onSetTheme('dark')
-    },
-    {
-      id: 'cmd-theme-amoled',
-      title: 'Switch to AMOLED Theme',
-      subtitle: 'Change interface colors to pure black',
-      icon: <Terminal size={16} className="text-gray-400" />,
-      action: () => onSetTheme('amoled')
-    },
-    {
-      id: 'cmd-toggle-graph',
-      title: 'Toggle Graph View',
-      subtitle: 'Open network visualization of links',
-      icon: <Layers size={16} className="text-[var(--accent)]" />,
-      action: () => onToggleGraph()
-    },
-    {
-      id: 'cmd-settings',
-      title: 'Open App Settings',
-      subtitle: 'Configure fonts and Gemini API key',
-      icon: <Settings size={16} className="text-[var(--text-muted)]" />,
-      action: () => onOpenSettings()
     }
+  };
+  traverse(filesTree);
+
+  // Define static commands
+  const commands = [
+    { id: 'new-file', name: 'Create New File', icon: <FilePlus size={14} />, action: onAddFile, category: 'File' },
+    { id: 'new-folder', name: 'Create New Folder', icon: <FolderPlus size={14} />, action: onAddFolder, category: 'File' },
+    { id: 'search-panel', name: 'Search Vault Text (Ctrl+Shift+F)', icon: <Search size={14} />, action: onOpenSearchPanel, category: 'Navigation' },
+    { id: 'toggle-favorites', name: 'Toggle Active File Favorite', icon: <Star size={14} />, action: onToggleFavorites, category: 'File' },
+    { id: 'toggle-outline', name: 'Toggle Outline Panel', icon: <Hash size={14} />, action: onToggleOutline, category: 'View' },
+    { id: 'toggle-backlinks', name: 'Toggle Backlinks Panel', icon: <LinkIcon size={14} />, action: onToggleBacklinks, category: 'View' },
+    { id: 'toggle-ai', name: 'Toggle AI Copilot', icon: <Command size={14} />, action: onToggleAi, category: 'View' },
+    { id: 'toggle-vim', name: 'Toggle Vim Mode', icon: <Command size={14} />, action: onToggleVim, category: 'Editor' },
+    { id: 'settings', name: 'Open Settings', icon: <Settings size={14} />, action: onOpenSettings, category: 'App' }
   ];
 
-  // Filter commands and files based on query
-  const filteredCommands = commands.filter(c => 
-    c.title.toLowerCase().includes(query.toLowerCase()) || 
-    (c.subtitle && c.subtitle.toLowerCase().includes(query.toLowerCase()))
-  );
-
-  const filteredFiles = flatFiles.filter(f => 
-    f.name.toLowerCase().includes(query.toLowerCase())
-  );
-
-  const totalResults = filteredCommands.length + filteredFiles.length;
+  const filteredCommands = commands.filter(c => c.name.toLowerCase().includes(query.toLowerCase()));
+  const filteredFiles = allFiles.filter(f => f.name.toLowerCase().includes(query.toLowerCase()));
+  const totalItems = filteredCommands.length + filteredFiles.length;
 
   useEffect(() => {
     if (isOpen) {
@@ -135,156 +77,123 @@ export function CommandPalette({
     }
   }, [isOpen]);
 
-  // Handle keys (up, down, enter, escape)
   useEffect(() => {
-    if (!isOpen) return;
+    setSelectedIndex(0);
+  }, [query]);
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        setSelectedIndex(prev => (prev + 1) % totalResults);
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        setSelectedIndex(prev => (prev - 1 + totalResults) % totalResults);
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        triggerSelected();
-      } else if (e.key === 'Escape') {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedIndex(prev => (prev + 1) % totalItems);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedIndex(prev => (prev - 1 + totalItems) % totalItems);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (selectedIndex < filteredCommands.length) {
+        filteredCommands[selectedIndex].action();
+        onClose();
+      } else {
+        const file = filteredFiles[selectedIndex - filteredCommands.length];
+        onSelectFile(file.path, file.type, file.name);
         onClose();
       }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, selectedIndex, totalResults]);
-
-  // Scroll active item into view
-  useEffect(() => {
-    if (resultsRef.current) {
-      const activeEl = resultsRef.current.children[selectedIndex] as HTMLElement;
-      if (activeEl) {
-        const parent = resultsRef.current;
-        const activeTop = activeEl.offsetTop;
-        const activeHeight = activeEl.offsetHeight;
-        const parentScrollTop = parent.scrollTop;
-        const parentHeight = parent.clientHeight;
-
-        if (activeTop < parentScrollTop) {
-          parent.scrollTop = activeTop;
-        } else if (activeTop + activeHeight > parentScrollTop + parentHeight) {
-          parent.scrollTop = activeTop + activeHeight - parentHeight;
-        }
-      }
+    } else if (e.key === 'Escape') {
+      onClose();
     }
-  }, [selectedIndex]);
-
-  const triggerSelected = () => {
-    if (selectedIndex < filteredCommands.length) {
-      filteredCommands[selectedIndex].action();
-    } else {
-      const fileIdx = selectedIndex - filteredCommands.length;
-      const file = filteredFiles[fileIdx];
-      onOpenFile(file.path, file.type, file.name);
-    }
-    onClose();
-  };
-
-  const getFileIcon = (type: FileType) => {
-    if (type === 'md') return <FileText size={16} className="text-[var(--accent)]" />;
-    if (type === 'Tasks') return <CheckSquare size={16} className="text-[var(--accent)]" />;
-    return <Grid size={16} className="text-[var(--accent)]" />;
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-black/60 backdrop-blur-sm select-none">
-      <div className="w-[600px] max-h-[450px] bg-[var(--bg-sidebar)] border border-[var(--border-glass-strong)] backdrop-blur-xl rounded-2xl shadow-2xl flex flex-col overflow-hidden text-[var(--text-main)]">
-        {/* Search Input */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--border-glass)]">
-          <Search size={18} className="text-[var(--text-muted)]" />
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] bg-black/40 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+      <div 
+        className="w-[600px] bg-[var(--bg-sidebar)] border border-[var(--border-glass-strong)] rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-slide-in-top"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center px-4 py-3 border-b border-[var(--border-glass)]">
+          <Search size={18} className="text-[var(--accent)] mr-3" />
           <input
             ref={inputRef}
             type="text"
-            placeholder="Type a command or file name..."
+            className="flex-1 bg-transparent border-none outline-none text-[var(--text-main)] text-lg placeholder:text-[var(--text-muted)]"
+            placeholder="Search files or run commands..."
             value={query}
-            onChange={e => { setQuery(e.target.value); setSelectedIndex(0); }}
-            className="flex-1 bg-transparent border-none outline-none text-sm placeholder:text-[var(--text-muted)]"
+            onChange={e => setQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
           />
-          <span className="text-[10px] px-2 py-0.5 rounded bg-black/10 dark:bg-white/10 text-[var(--text-muted)] font-semibold">
-            ESC
-          </span>
+          <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-1 rounded bg-black/10 dark:bg-white/10 text-[10px] font-semibold text-[var(--text-muted)]">
+            ESC to close
+          </kbd>
         </div>
 
-        {/* Results List */}
-        <div 
-          ref={resultsRef}
-          className="flex-1 overflow-y-auto p-2 space-y-0.5"
-        >
-          {totalResults === 0 ? (
-            <div className="py-8 text-center text-xs text-[var(--text-muted)] font-medium">
-              No commands or files matching query
-            </div>
-          ) : (
-            <>
-              {/* Commands */}
-              {filteredCommands.map((cmd, idx) => {
-                const isActive = idx === selectedIndex;
-                return (
-                  <div
-                    key={cmd.id}
-                    onClick={() => { setSelectedIndex(idx); triggerSelected(); }}
-                    className={`flex items-center gap-3 px-4 py-2.5 rounded-xl cursor-pointer transition-all ${isActive ? 'bg-[var(--accent)] text-white' : 'hover:bg-black/5 dark:hover:bg-white/5'}`}
-                  >
-                    <div className={`p-1.5 rounded-lg ${isActive ? 'bg-white/20 text-white' : 'bg-black/5 dark:bg-white/5'}`}>
-                      {cmd.icon}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-xs font-bold truncate">{cmd.title}</h4>
-                      {cmd.subtitle && (
-                        <p className={`text-[10px] truncate ${isActive ? 'text-white/70' : 'text-[var(--text-muted)]'}`}>
-                          {cmd.subtitle}
-                        </p>
-                      )}
-                    </div>
-                    {isActive && (
-                      <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded">
-                        Run
-                      </span>
-                    )}
+        <div className="max-h-[60vh] overflow-y-auto p-2 no-scrollbar">
+          {filteredCommands.length > 0 && (
+            <div className="mb-4">
+              <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Commands</div>
+              {filteredCommands.map((cmd, idx) => (
+                <div
+                  key={cmd.id}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-colors",
+                    selectedIndex === idx ? "bg-[var(--accent)] text-white" : "hover:bg-[var(--bg-glass)] text-[var(--text-main)]"
+                  )}
+                  onMouseEnter={() => setSelectedIndex(idx)}
+                  onClick={() => { cmd.action(); onClose(); }}
+                >
+                  <div className={cn("p-1.5 rounded-lg", selectedIndex === idx ? "bg-white/20" : "bg-[var(--accent-light)] text-[var(--accent)]")}>
+                    {cmd.icon}
                   </div>
-                );
-              })}
+                  <div className="flex-1">
+                    <div className="text-sm font-medium">{cmd.name}</div>
+                    <div className={cn("text-[10px]", selectedIndex === idx ? "text-white/70" : "text-[var(--text-muted)]")}>{cmd.category}</div>
+                  </div>
+                  {selectedIndex === idx && <ArrowRight size={14} className="opacity-70" />}
+                </div>
+              ))}
+            </div>
+          )}
 
-              {/* Files */}
+          {filteredFiles.length > 0 && (
+            <div>
+              <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Files</div>
               {filteredFiles.map((file, idx) => {
-                const realIdx = idx + filteredCommands.length;
-                const isActive = realIdx === selectedIndex;
+                const globalIdx = filteredCommands.length + idx;
+                const isSelected = selectedIndex === globalIdx;
+                
+                let Icon = FileText;
+                if (file.type === 'Tasks') Icon = CheckSquare;
+                if (file.type === 'Board') Icon = Grid;
+
                 return (
                   <div
                     key={file.path}
-                    onClick={() => { setSelectedIndex(realIdx); triggerSelected(); }}
-                    className={`flex items-center gap-3 px-4 py-2.5 rounded-xl cursor-pointer transition-all ${isActive ? 'bg-[var(--accent)] text-white' : 'hover:bg-black/5 dark:hover:bg-white/5'}`}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer transition-colors",
+                      isSelected ? "bg-[var(--accent)] text-white" : "hover:bg-[var(--bg-glass)] text-[var(--text-main)]"
+                    )}
+                    onMouseEnter={() => setSelectedIndex(globalIdx)}
+                    onClick={() => { onSelectFile(file.path, file.type, file.name); onClose(); }}
                   >
-                    <div className={`p-1.5 rounded-lg ${isActive ? 'bg-white/20 text-white' : 'bg-black/5 dark:bg-white/5'}`}>
-                      {getFileIcon(file.type)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-xs font-bold truncate">{file.name}</h4>
-                      <p className={`text-[10px] truncate ${isActive ? 'text-white/70' : 'text-[var(--text-muted)]'}`}>
-                        File: {file.path}
-                      </p>
-                    </div>
-                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wide ${isActive ? 'bg-white/20' : 'bg-black/10 dark:bg-white/10 text-[var(--text-muted)]'}`}>
-                      {file.type}
+                    <Icon size={14} className={isSelected ? "text-white opacity-80" : "text-[var(--text-muted)]"} />
+                    <span className="text-sm font-medium truncate flex-1">{file.name}</span>
+                    <span className={cn("text-xs truncate max-w-[200px]", isSelected ? "text-white/60" : "text-[var(--text-muted)]")}>
+                      {file.path.split('\\').slice(-2, -1)[0] || 'root'}
                     </span>
                   </div>
                 );
               })}
-            </>
+            </div>
+          )}
+
+          {totalItems === 0 && (
+            <div className="py-8 text-center text-[var(--text-muted)]">
+              <p className="text-sm">No results found for "{query}"</p>
+            </div>
           )}
         </div>
       </div>
     </div>
   );
 }
+

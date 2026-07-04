@@ -1,71 +1,201 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { languages } from '@codemirror/language-data';
 import { EditorView } from '@codemirror/view';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { WorkspaceFile } from '../../types';
-import { Edit2, Eye } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { EditorState } from '@codemirror/state';
+import { 
+  Bold, Italic, Strikethrough, Heading, Link, Code, 
+  List, ListOrdered, CheckSquare, Minus
+} from 'lucide-react';
+import { WorkspaceFile, Theme } from '../../types';
 import { markdownLivePreview } from './markdownLivePreview';
+import { cn } from '../../lib/utils';
 
+import { vim } from '@replit/codemirror-vim';
 interface Props {
   file: WorkspaceFile;
   onChange: (content: string) => void;
+  theme: Theme;
+  vimMode?: boolean;
 }
 
-export function MarkdownEditor({ file, onChange }: Props) {
-  const [isPreview, setIsPreview] = useState(false);
+export function MarkdownEditor({ file, onChange, theme, vimMode = false }: Props) {
+  const [content, setContent] = useState(file.content);
+  const editorRef = useRef<{ view?: EditorView }>(null);
+
+  useEffect(() => {
+    setContent(file.content);
+  }, [file.id, file.content]);
+
+  const handleChange = (val: string) => {
+    setContent(val);
+    onChange(val);
+  };
+
+  const getThemeExtension = () => {
+    return EditorView.theme({
+      "&": {
+        color: "var(--text-main)",
+        backgroundColor: "transparent",
+      },
+      ".cm-content": {
+        fontFamily: "var(--font-sans)",
+      },
+      ".cm-cursor": {
+        borderLeftColor: "var(--accent)"
+      },
+      "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection": {
+        backgroundColor: "var(--accent-light)"
+      },
+      ".cm-gutters": {
+        backgroundColor: "transparent",
+        color: "var(--text-muted)",
+        border: "none",
+        fontFamily: "var(--font-mono)",
+      },
+      ".cm-activeLine": {
+        backgroundColor: "var(--border-glass)"
+      },
+      ".cm-activeLineGutter": {
+        backgroundColor: "transparent",
+        color: "var(--text-main)"
+      }
+    }, { dark: theme !== 'light' });
+  };
+
+  const insertSyntax = (prefix: string, suffix: string = '') => {
+    const view = editorRef.current?.view;
+    if (!view) return;
+
+    const selection = view.state.selection.main;
+    const selectedText = view.state.sliceDoc(selection.from, selection.to);
+    
+    // If text is selected, wrap it. Otherwise insert syntax and place cursor inside.
+    const textToInsert = `${prefix}${selectedText}${suffix}`;
+    
+    view.dispatch({
+      changes: {
+        from: selection.from,
+        to: selection.to,
+        insert: textToInsert
+      },
+      selection: {
+        anchor: selection.from + prefix.length + (selectedText.length > 0 ? selectedText.length + suffix.length : 0),
+        head: selection.from + prefix.length + (selectedText.length > 0 ? selectedText.length + suffix.length : 0)
+      }
+    });
+    view.focus();
+  };
+
+  const insertLinePrefix = (prefix: string) => {
+    const view = editorRef.current?.view;
+    if (!view) return;
+
+    const selection = view.state.selection.main;
+    const line = view.state.doc.lineAt(selection.from);
+    
+    view.dispatch({
+      changes: {
+        from: line.from,
+        to: line.from,
+        insert: prefix
+      }
+    });
+    view.focus();
+  };
+
+  // Setup extensions array
+  const extensions = [
+    markdown({ base: markdownLanguage, codeLanguages: languages }),
+    EditorView.lineWrapping,
+    markdownLivePreview(),
+    getThemeExtension()
+  ];
+
+  if (vimMode && vim) {
+    extensions.push(vim({ status: true }));
+  }
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-semibold tracking-tight">{file.name}</h1>
-        
-        <div className="flex bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-full p-1 backdrop-blur-md shadow-[var(--shadow-sm)]">
-          <button 
-            onClick={() => setIsPreview(false)}
-            className={cn("px-4 py-1.5 rounded-full text-sm font-medium flex items-center gap-2 transition-all", !isPreview ? "bg-white dark:bg-white/20 shadow-sm" : "text-[var(--text-muted)] hover:text-[var(--text-main)]")}
-          >
-            <Edit2 size={14} /> Live Edit
+    <div className="h-full flex flex-col relative bg-transparent">
+      {/* Title Area */}
+      <div className="flex items-center justify-between px-8 py-6 mb-2">
+        <div className="flex flex-col">
+          <input
+            type="text"
+            className="text-3xl font-bold bg-transparent outline-none text-[var(--text-main)] w-full placeholder:text-[var(--text-muted)]"
+            value={file.name}
+            readOnly
+          />
+          <span className="text-xs text-[var(--text-muted)] font-medium mt-1">
+            Last edited {new Date(file.updatedAt).toLocaleString()}
+          </span>
+        </div>
+      </div>
+
+      {/* Editor Toolbar */}
+      <div className="px-8 pb-4 sticky top-0 z-10">
+        <div className="editor-toolbar inline-flex shadow-sm">
+          <button onClick={() => insertSyntax('**', '**')} title="Bold (Ctrl+B)">
+            <Bold size={14} />
           </button>
-          <button 
-            onClick={() => setIsPreview(true)}
-            className={cn("px-4 py-1.5 rounded-full text-sm font-medium flex items-center gap-2 transition-all", isPreview ? "bg-white dark:bg-white/20 shadow-sm" : "text-[var(--text-muted)] hover:text-[var(--text-main)]")}
-          >
-            <Eye size={14} /> View
+          <button onClick={() => insertSyntax('*', '*')} title="Italic (Ctrl+I)">
+            <Italic size={14} />
+          </button>
+          <button onClick={() => insertSyntax('~~', '~~')} title="Strikethrough">
+            <Strikethrough size={14} />
+          </button>
+          <div className="separator" />
+          <button onClick={() => insertLinePrefix('## ')} title="Heading">
+            <Heading size={14} />
+          </button>
+          <div className="separator" />
+          <button onClick={() => insertSyntax('[', '](url)')} title="Link">
+            <Link size={14} />
+          </button>
+          <button onClick={() => insertSyntax('`', '`')} title="Inline Code">
+            <Code size={14} />
+          </button>
+          <div className="separator" />
+          <button onClick={() => insertLinePrefix('- ')} title="Bulleted List">
+            <List size={14} />
+          </button>
+          <button onClick={() => insertLinePrefix('1. ')} title="Numbered List">
+            <ListOrdered size={14} />
+          </button>
+          <button onClick={() => insertLinePrefix('- [ ] ')} title="Task List">
+            <CheckSquare size={14} />
+          </button>
+          <button onClick={() => insertLinePrefix('\n---\n')} title="Horizontal Rule">
+            <Minus size={14} />
           </button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto bg-[var(--bg-glass)] backdrop-blur-[var(--backdrop-blur)] rounded-2xl border border-[var(--border-glass)] shadow-[var(--shadow-glass)] transition-colors duration-300">
-        {isPreview ? (
-          <div className="p-8 max-w-4xl mx-auto prose dark:prose-invert prose-headings:font-semibold prose-a:text-[var(--accent)]">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{file.content}</ReactMarkdown>
-          </div>
-        ) : (
-          <div className="h-full live-preview-editor">
-            <CodeMirror
-              value={file.content}
-              height="100%"
-              onChange={onChange}
-              className="h-full text-[15px] text-[var(--text-main)]"
-              extensions={[
-                markdown({ base: markdownLanguage, codeLanguages: languages }),
-                EditorView.lineWrapping,
-                markdownLivePreview()
-              ]}
-              theme="none"
-              basicSetup={{
-                lineNumbers: false,
-                foldGutter: false,
-                highlightActiveLine: false,
-                highlightActiveLineGutter: false,
-              }}
-            />
-          </div>
-        )}
+      {/* CodeMirror Editor Area */}
+      <div className="flex-1 overflow-hidden relative">
+        <CodeMirror
+          value={content}
+          height="100%"
+          theme={theme === 'light' ? 'light' : 'dark'}
+          extensions={extensions}
+          onChange={handleChange}
+          className="h-full w-full text-base"
+          basicSetup={{
+            lineNumbers: false,
+            foldGutter: false,
+            dropCursor: false,
+            allowMultipleSelections: true,
+            indentOnInput: true,
+            bracketMatching: true,
+            closeBrackets: true,
+            autocompletion: true,
+            highlightActiveLine: false,
+            highlightSelectionMatches: true,
+          }}
+          ref={editorRef}
+        />
       </div>
     </div>
   );

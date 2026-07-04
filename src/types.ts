@@ -10,6 +10,27 @@ export interface FileEntry {
   children?: FileEntry[];
 }
 
+// Search result from full-text search
+export interface SearchResult {
+  filePath: string;
+  fileName: string;
+  fileType: FileType;
+  lineNumber: number;
+  lineContent: string;
+  matchStart: number;
+  matchEnd: number;
+}
+
+// Trash entry metadata
+export interface TrashEntry {
+  originalPath: string;
+  trashPath: string;
+  fileName: string;
+  fileType?: FileType;
+  deletedAt: number;
+  isDirectory: boolean;
+}
+
 declare global {
   interface Window {
     electronAPI?: {
@@ -29,6 +50,15 @@ declare global {
       deleteDirectory: (dirPath: string) => Promise<boolean>;
       renameEntry: (oldPath: string, newPath: string) => Promise<boolean>;
       showInExplorer: (filePath: string) => Promise<boolean>;
+      // New v1.0 APIs
+      searchFiles: (vaultPath: string, query: string, options: { regex?: boolean; caseSensitive?: boolean }) => Promise<SearchResult[]>;
+      moveToTrash: (filePath: string, isDirectory: boolean) => Promise<boolean>;
+      restoreFromTrash: (trashEntry: TrashEntry) => Promise<boolean>;
+      listTrash: (vaultPath: string) => Promise<TrashEntry[]>;
+      emptyTrash: (vaultPath: string) => Promise<boolean>;
+      permanentDeleteTrash: (trashPath: string) => Promise<boolean>;
+      createDailyNote: (vaultPath: string, date: string, template: string) => Promise<string>;
+      onExternalFileChange: (callback: (event: { type: string; path: string }) => void) => () => void;
     };
   }
 }
@@ -45,11 +75,22 @@ export interface WorkspaceFile {
 
 // For .tasks files
 export type TaskStatus = 'todo' | 'in-progress' | 'done';
+export type TaskPriority = 'none' | 'low' | 'medium' | 'high';
+
+export interface SubTask {
+  id: string;
+  title: string;
+  completed: boolean;
+}
+
 export interface TaskItem {
   id: string;
   title: string;
   description?: string;
   status: TaskStatus;
+  priority: TaskPriority;
+  dueDate?: string; // ISO date string YYYY-MM-DD
+  subtasks?: SubTask[];
 }
 
 // For .board files
@@ -70,6 +111,9 @@ export interface AppSettings {
   theme: Theme;
   fontFamily: string;
   fontSize: number;
+  accentColor: string; // HSL string like "210 100% 50%"
+  vimMode: boolean;
+  dailyNoteTemplate: string;
 }
 
 // Tab for editor workspace
@@ -78,4 +122,3 @@ export interface WorkspaceTab {
   name: string;
   type: FileType;
 }
-
