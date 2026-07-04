@@ -106,7 +106,11 @@ export interface BoardItem {
 
 // Electron settings
 export interface AppSettings {
-  geminiApiKey: string;
+  aiEnabled: boolean;
+  aiProvider: 'openai' | 'ollama' | 'lmstudio' | 'custom';
+  aiEndpoint: string;
+  aiModel: string;
+  aiApiKey: string;
   defaultVaultPath: string;
   theme: Theme;
   fontFamily: string;
@@ -114,6 +118,9 @@ export interface AppSettings {
   accentColor: string; // HSL string like "210 100% 50%"
   vimMode: boolean;
   dailyNoteTemplate: string;
+  editorLineNumbers: boolean;
+  editorWordWrap: boolean;
+  editorTabSize: number;
 }
 
 // Tab for editor workspace

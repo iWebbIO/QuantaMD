@@ -19,27 +19,19 @@ const INITIAL_FILES: WorkspaceFile[] = [
     id: 'f2',
     name: 'Project Roadmap',
     type: 'Tasks',
-    content: JSON.stringify([
-      { id: 't1', title: 'Design System', description: 'Setup glassmorphism UI', status: 'done', priority: 'none' },
-      { id: 't2', title: 'Kanban Board', description: 'Implement drag & drop tasks', status: 'in-progress', priority: 'none' },
-      { id: 't3', title: 'Markdown Support', description: 'Add GFM support', status: 'todo', priority: 'none' },
-    ]),
+    content: `# Project Roadmap\n\n- [x] Design System\n  Setup glassmorphism UI\n- [ ] Kanban Board\n  Implement drag & drop tasks\n- [ ] Markdown Support\n  Add GFM support`,
     createdAt: Date.now(),
     updatedAt: Date.now(),
-    path: 'roadmap.tasks'
+    path: 'roadmap.tasks.md'
   },
   {
     id: 'f3',
     name: 'Inspiration Board',
     type: 'Board',
-    content: JSON.stringify([
-      { id: 'b1', type: 'link', title: 'Apple Design', url: 'https://developer.apple.com/design/', tags: ['ui', 'inspiration'] },
-      { id: 'b2', type: 'memo', title: 'App Idea', content: 'Use glass panels everywhere for depth.' },
-      { id: 'b3', type: 'repo', title: 'TailwindCSS', url: 'https://github.com/tailwindlabs/tailwindcss', tags: ['css'] },
-    ]),
+    content: `## Links\n- [Apple Design](https://developer.apple.com/design/) #ui #inspiration\n- [TailwindCSS](https://github.com/tailwindlabs/tailwindcss) #css\n\n## Ideas\n- Use glass panels everywhere for depth.`,
     createdAt: Date.now(),
     updatedAt: Date.now(),
-    path: 'board.board'
+    path: 'board.board.md'
   }
 ];
 
@@ -54,14 +46,21 @@ export function useWorkspace() {
   
   const [theme, setThemeState] = useState<Theme>('dark');
   const [settings, setSettings] = useState<AppSettings>({
-    geminiApiKey: '',
+    aiEnabled: true,
+    aiProvider: 'ollama',
+    aiEndpoint: 'http://localhost:11434/v1',
+    aiModel: '',
+    aiApiKey: '',
     defaultVaultPath: '',
     theme: 'dark',
     fontFamily: 'system-ui',
     fontSize: 14,
     accentColor: '210 100% 50%',
     vimMode: false,
-    dailyNoteTemplate: '# {{date}}\n\n## Tasks\n\n- [ ] \n\n## Notes\n\n'
+    dailyNoteTemplate: '# {{date}}\n\n## Tasks\n\n- [ ] \n\n## Notes\n\n',
+    editorLineNumbers: true,
+    editorWordWrap: true,
+    editorTabSize: 2
   });
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -79,14 +78,21 @@ export function useWorkspace() {
           const appSettings = await window.electronAPI.getSettings();
           // Merge with defaults for new fields
           const mergedSettings: AppSettings = {
-            geminiApiKey: appSettings.geminiApiKey || '',
+            aiEnabled: appSettings.aiEnabled ?? true,
+            aiProvider: appSettings.aiProvider || 'ollama',
+            aiEndpoint: appSettings.aiEndpoint || 'http://localhost:11434/v1',
+            aiModel: appSettings.aiModel || '',
+            aiApiKey: appSettings.aiApiKey || '',
             defaultVaultPath: appSettings.defaultVaultPath || '',
             theme: appSettings.theme || 'dark',
             fontFamily: appSettings.fontFamily || 'system-ui',
             fontSize: appSettings.fontSize || 14,
             accentColor: appSettings.accentColor || '210 100% 50%',
             vimMode: appSettings.vimMode || false,
-            dailyNoteTemplate: appSettings.dailyNoteTemplate || '# {{date}}\n\n## Tasks\n\n- [ ] \n\n## Notes\n\n'
+            dailyNoteTemplate: appSettings.dailyNoteTemplate || '# {{date}}\n\n## Tasks\n\n- [ ] \n\n## Notes\n\n',
+            editorLineNumbers: appSettings.editorLineNumbers ?? true,
+            editorWordWrap: appSettings.editorWordWrap ?? true,
+            editorTabSize: appSettings.editorTabSize || 2
           };
           setSettings(mergedSettings);
           setThemeState(mergedSettings.theme as Theme);

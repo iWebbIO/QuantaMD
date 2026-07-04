@@ -51,7 +51,7 @@ export function TitleBar({ vaultPath, activeFileName, onOpenSearch }: Props) {
         
         <div className="flex items-center h-full text-[#cccccc] font-medium -webkit-app-region-no-drag">
           {['File', 'Edit', 'Selection', 'View', 'Go', 'Help'].map(item => (
-            <button key={item} className="px-2 h-full hover:bg-white/10 rounded-md mx-0.5 transition-colors text-[13px]">
+            <button key={item} className="px-2.5 h-[26px] hover:bg-white/10 rounded-md mx-0.5 transition-colors text-[13px] flex items-center justify-center cursor-default">
               {item}
             </button>
           ))}

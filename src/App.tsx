@@ -266,12 +266,12 @@ function App() {
               <GraphView files={filesTree} cachedFiles={cachedFiles} onOpenFile={openFile} />
             ) : activeFile ? (
               activeFile.type === 'md' ? (
-                <MarkdownEditor 
-                  file={activeFile} 
-                  onChange={(val) => updateFileContent(activeTabId!, val)} 
-                  theme={theme}
-                  vimMode={settings.vimMode}
-                />
+                  <MarkdownEditor 
+                    file={activeFile} 
+                    onChange={(val) => updateFileContent(activeTabId!, val)} 
+                    theme={theme}
+                    settings={settings}
+                  />
               ) : activeFile.type === 'Tasks' ? (
                 <TasksEditor 
                   file={activeFile} 
@@ -303,7 +303,10 @@ function App() {
           <div className="w-80 flex-shrink-0 flex flex-col h-full z-10 bg-[var(--bg-sidebar)] border-l border-[var(--border-glass-strong)] shadow-[-10px_0_30px_rgba(0,0,0,0.05)]">
             {rightPanelMode === 'ai' && (
               <AiAssistant
-                apiKey={settings.geminiApiKey}
+                aiEnabled={settings.aiEnabled}
+                aiEndpoint={settings.aiEndpoint}
+                aiModel={settings.aiModel}
+                aiApiKey={settings.aiApiKey}
                 activeFileContent={activeFile?.content || ''}
                 activeFileName={activeFile?.name || ''}
                 onInsertContent={handleInsertContent}

@@ -3,6 +3,7 @@ import { WorkspaceFile, TaskItem, TaskStatus, TaskPriority, SubTask } from '../.
 import { Plus, GripVertical, CheckCircle2, Clock, ListTodo, AlertCircle, X, CheckSquare, Calendar, AlignLeft, Flag, Edit2, Trash2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useContextMenu, ContextMenuItem } from '../ContextMenu';
+import { parseTasks, serializeTasks } from '../../lib/markdown-parser';
 
 interface Props {
   file: WorkspaceFile;
@@ -45,18 +46,22 @@ export function TasksEditor({ file, onChange }: Props) {
 
   useEffect(() => {
     try {
-      const parsed = JSON.parse(file.content || '[]');
-      // Ensure backwards compatibility with old tasks that lack priority/dueDate/subtasks
-      const upgradedTasks = parsed.map((t: any) => ({
-        id: t.id,
-        title: t.title || 'Untitled Task',
-        description: t.description || '',
-        status: t.status || 'todo',
-        priority: t.priority || 'none',
-        dueDate: t.dueDate || undefined,
-        subtasks: t.subtasks || []
-      }));
-      setTasks(upgradedTasks);
+      if (file.content.trim().startsWith('[') || file.content.trim().startsWith('{')) {
+        const parsed = JSON.parse(file.content || '[]');
+        const upgradedTasks = parsed.map((t: any) => ({
+          id: t.id,
+          title: t.title || 'Untitled Task',
+          description: t.description || '',
+          status: t.status || 'todo',
+          priority: t.priority || 'none',
+          dueDate: t.dueDate || undefined,
+          subtasks: t.subtasks || []
+        }));
+        setTasks(upgradedTasks);
+      } else {
+        const parsed = parseTasks(file.content || '');
+        setTasks(parsed);
+      }
     } catch (e) {
       setTasks([]);
     }
@@ -64,7 +69,9 @@ export function TasksEditor({ file, onChange }: Props) {
 
   const saveTasks = (newTasks: TaskItem[]) => {
     setTasks(newTasks);
-    onChange(JSON.stringify(newTasks, null, 2));
+    const titleMatch = file.content.match(/^# (.*)/);
+    const title = titleMatch ? titleMatch[1].trim() : file.name.replace('.md', '').replace('.tasks', '');
+    onChange(serializeTasks(newTasks, title));
   };
 
   const addTask = (status: TaskStatus) => {

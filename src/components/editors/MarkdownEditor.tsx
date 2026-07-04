@@ -8,7 +8,7 @@ import {
   Bold, Italic, Strikethrough, Heading, Link, Code, 
   List, ListOrdered, CheckSquare, Minus
 } from 'lucide-react';
-import { WorkspaceFile, Theme } from '../../types';
+import { WorkspaceFile, Theme, AppSettings } from '../../types';
 import { markdownLivePreview } from './markdownLivePreview';
 import { cn } from '../../lib/utils';
 import { useContextMenu, ContextMenuItem } from '../ContextMenu';
@@ -18,10 +18,10 @@ interface Props {
   file: WorkspaceFile;
   onChange: (content: string) => void;
   theme: Theme;
-  vimMode?: boolean;
+  settings: AppSettings;
 }
 
-export function MarkdownEditor({ file, onChange, theme, vimMode = false }: Props) {
+export function MarkdownEditor({ file, onChange, theme, settings }: Props) {
   const [content, setContent] = useState(file.content);
   const editorRef = useRef<{ view?: EditorView }>(null);
   const { showMenu, ContextMenuComponent } = useContextMenu();
@@ -132,12 +132,16 @@ export function MarkdownEditor({ file, onChange, theme, vimMode = false }: Props
   // Setup extensions array
   const extensions = [
     markdown({ base: markdownLanguage, codeLanguages: languages }),
-    EditorView.lineWrapping,
     markdownLivePreview(),
-    getThemeExtension()
+    getThemeExtension(),
+    EditorState.tabSize.of(settings.editorTabSize ?? 2)
   ];
 
-  if (vimMode && vim) {
+  if (settings.editorWordWrap !== false) {
+    extensions.push(EditorView.lineWrapping);
+  }
+
+  if (settings.vimMode && vim) {
     extensions.push(vim({ status: true }));
   }
 
@@ -171,7 +175,7 @@ export function MarkdownEditor({ file, onChange, theme, vimMode = false }: Props
           onChange={handleChange}
           className="h-full w-full text-base"
           basicSetup={{
-            lineNumbers: false,
+            lineNumbers: settings.editorLineNumbers ?? true,
             foldGutter: false,
             dropCursor: false,
             allowMultipleSelections: true,

@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
 import { Bot, Send, User, Sparkles, Loader2, ListOrdered, FileText, Check, MessageSquare, PlayCircle, Trash2, ArrowDownToLine } from 'lucide-react';
-import { GoogleGenAI } from '@google/genai';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '../lib/utils';
 
@@ -11,7 +10,10 @@ interface Message {
 }
 
 interface Props {
-  apiKey: string;
+  aiEnabled: boolean;
+  aiEndpoint: string;
+  aiModel: string;
+  aiApiKey: string;
   activeFileContent: string;
   activeFileName: string;
   onInsertContent?: (content: string) => void;
@@ -19,7 +21,7 @@ interface Props {
 
 const STORAGE_KEY = 'precision-workspace-chat-history';
 
-export function AiAssistant({ apiKey, activeFileContent, activeFileName, onInsertContent }: Props) {
+export function AiAssistant({ aiEnabled, aiEndpoint, aiModel, aiApiKey, activeFileContent, activeFileName, onInsertContent }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -63,7 +65,7 @@ export function AiAssistant({ apiKey, activeFileContent, activeFileName, onInser
   }, [messages, isTyping]);
 
   const handleSend = async () => {
-    if (!input.trim() || !apiKey) return;
+    if (!input.trim() || !aiEndpoint) return;
 
     const userMsg: Message = { id: Date.now().toString(), role: 'user', content: input };
     setMessages(prev => [...prev, userMsg]);
@@ -71,8 +73,6 @@ export function AiAssistant({ apiKey, activeFileContent, activeFileName, onInser
     setIsTyping(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey });
-      
       const systemInstruction = `You are a helpful AI coding and writing assistant integrated directly into a markdown note-taking app. 
 The user is currently viewing/editing a file named "${activeFileName}".
 Here is the current content of their file for context (do not repeat this content back to them unless asked):
@@ -81,22 +81,58 @@ ${activeFileContent}
 ---
 Keep your answers concise, format code blocks properly, and be helpful.`;
 
-      const responseStream = await ai.models.generateContentStream({
-        model: 'gemini-2.5-flash',
-        contents: input,
-        config: { systemInstruction }
+      const response = await fetch(`${aiEndpoint}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(aiApiKey ? { 'Authorization': `Bearer ${aiApiKey}` } : {})
+        },
+        body: JSON.stringify({
+          model: aiModel || 'default',
+          messages: [
+            { role: 'system', content: systemInstruction },
+            ...messages.map(m => ({ role: m.role === 'model' ? 'assistant' : 'user', content: m.content })),
+            { role: 'user', content: input }
+          ],
+          stream: true
+        })
       });
 
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status} ${await response.text()}`);
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder('utf-8');
+      
+      let fullContent = '';
       const aiMsgId = (Date.now() + 1).toString();
       setMessages(prev => [...prev, { id: aiMsgId, role: 'model', content: '' }]);
 
-      let fullContent = '';
-      for await (const chunk of responseStream) {
-        if (chunk.text) {
-          fullContent += chunk.text;
-          setMessages(prev => 
-            prev.map(msg => msg.id === aiMsgId ? { ...msg, content: fullContent } : msg)
-          );
+      if (reader) {
+        let buffer = '';
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+          
+          for (const line of lines) {
+            if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+              try {
+                const data = JSON.parse(line.slice(6));
+                if (data.choices && data.choices[0].delta?.content) {
+                  fullContent += data.choices[0].delta.content;
+                  setMessages(prev => 
+                    prev.map(msg => msg.id === aiMsgId ? { ...msg, content: fullContent } : msg)
+                  );
+                }
+              } catch (e) {
+                // Ignore parse errors on partial streams
+              }
+            }
+          }
         }
       }
     } catch (error) {
@@ -104,7 +140,7 @@ Keep your answers concise, format code blocks properly, and be helpful.`;
       const errorMsg: Message = { 
         id: Date.now().toString(), 
         role: 'model', 
-        content: `Error: ${error instanceof Error ? error.message : 'Failed to connect to Gemini.'}` 
+        content: `Error: ${error instanceof Error ? error.message : 'Failed to connect to AI Provider.'}` 
       };
       setMessages(prev => [...prev, errorMsg]);
     } finally {
@@ -119,12 +155,22 @@ Keep your answers concise, format code blocks properly, and be helpful.`;
     }, 100);
   };
 
-  if (!apiKey) {
+  if (!aiEnabled) {
     return (
       <div className="h-full flex flex-col items-center justify-center p-6 text-center text-[var(--text-muted)] bg-[var(--bg-sidebar)] border-l border-[var(--border-glass)]">
         <Bot size={32} className="mb-4 opacity-50 text-[var(--accent)]" />
         <h3 className="font-bold text-[var(--text-main)] mb-2">AI Copilot Disabled</h3>
-        <p className="text-sm mb-4">Please enter your Gemini API key in Settings to enable the AI Copilot.</p>
+        <p className="text-sm mb-4">You can enable the AI Copilot and configure local models in Settings.</p>
+      </div>
+    );
+  }
+
+  if (!aiEndpoint) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center p-6 text-center text-[var(--text-muted)] bg-[var(--bg-sidebar)] border-l border-[var(--border-glass)]">
+        <Bot size={32} className="mb-4 opacity-50 text-[var(--accent)]" />
+        <h3 className="font-bold text-[var(--text-main)] mb-2">AI Provider Not Configured</h3>
+        <p className="text-sm mb-4">Please set up your AI endpoint in Settings.</p>
       </div>
     );
   }
@@ -138,7 +184,7 @@ Keep your answers concise, format code blocks properly, and be helpful.`;
             <Bot size={18} className="text-[var(--accent)]" />
             <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full border-2 border-[var(--bg-sidebar)]"></div>
           </div>
-          <h2 className="font-bold text-sm tracking-wide">Gemini Copilot</h2>
+          <h2 className="font-bold text-sm tracking-wide">AI Copilot</h2>
         </div>
         <div className="flex items-center gap-1">
           {messages.length > 0 && (

@@ -3,6 +3,7 @@ import { WorkspaceFile, BoardItem, BoardItemType } from '../../types';
 import { ExternalLink, Hash, Link as LinkIcon, StickyNote, Github, Plus, X, Grid, Edit2, Trash2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useContextMenu, ContextMenuItem } from '../ContextMenu';
+import { parseBoard, serializeBoard } from '../../lib/markdown-parser';
 
 interface Props {
   file: WorkspaceFile;
@@ -40,7 +41,11 @@ export function BoardEditor({ file, onChange }: Props) {
 
   useEffect(() => {
     try {
-      setItems(JSON.parse(file.content || '[]'));
+      if (file.content.trim().startsWith('[') || file.content.trim().startsWith('{')) {
+        setItems(JSON.parse(file.content || '[]'));
+      } else {
+        setItems(parseBoard(file.content || ''));
+      }
     } catch (e) {
       setItems([]);
     }
@@ -48,7 +53,7 @@ export function BoardEditor({ file, onChange }: Props) {
 
   const saveItems = (newItems: BoardItem[]) => {
     setItems(newItems);
-    onChange(JSON.stringify(newItems, null, 2));
+    onChange(serializeBoard(newItems));
   };
 
   const addItem = (type: BoardItemType) => {
@@ -94,7 +99,7 @@ export function BoardEditor({ file, onChange }: Props) {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     if (draggedItem) {
-      onChange(JSON.stringify(items, null, 2)); // Persist the new order
+      onChange(serializeBoard(items)); // Persist the new order
       setDraggedItem(null);
     }
   };
