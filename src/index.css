@@ -3,6 +3,12 @@
 @theme {
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-mono: "SF Mono", "Menlo", "Monaco", "Courier New", monospace;
+  --shadow-sm: var(--app-shadow-sm);
+  --shadow-md: var(--app-shadow-md);
+  --shadow-lg: var(--app-shadow-lg);
+  --shadow-xl: var(--app-shadow-xl);
+  --shadow-2xl: var(--app-shadow-2xl);
+  --shadow-glass: var(--shadow-glass);
 }
 
 :root {
@@ -18,8 +24,14 @@
   --accent: hsl(var(--accent-hsl));
   --accent-light: hsl(var(--accent-hsl) / 0.1);
   --shadow-glass: 0 4px 24px rgba(0,0,0,0.04);
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.02);
+  --app-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.03);
+  --app-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.04), 0 2px 4px -2px rgb(0 0 0 / 0.04);
+  --app-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+  --app-shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.06), 0 8px 10px -6px rgb(0 0 0 / 0.06);
+  --app-shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.08);
   --backdrop-blur: 24px;
+  --bg-overlay: rgba(0, 0, 0, 0.15);
+  --bg-modal: rgba(255, 255, 255, 0.9);
 }
 
 .theme-dark {
@@ -34,7 +46,13 @@
   --accent: hsl(var(--accent-hsl));
   --accent-light: hsl(var(--accent-hsl) / 0.15);
   --shadow-glass: 0 4px 24px rgba(0,0,0,0.2);
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.1);
+  --app-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.1);
+  --app-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --app-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.15), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --app-shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.2), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --app-shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.3);
+  --bg-overlay: rgba(0, 0, 0, 0.6);
+  --bg-modal: rgba(30, 30, 32, 0.9);
 }
 
 .theme-amoled {
@@ -49,7 +67,13 @@
   --accent: hsl(var(--accent-hsl));
   --accent-light: hsl(var(--accent-hsl) / 0.15);
   --shadow-glass: none;
-  --shadow-sm: none;
+  --app-shadow-sm: none;
+  --app-shadow-md: none;
+  --app-shadow-lg: none;
+  --app-shadow-xl: none;
+  --app-shadow-2xl: none;
+  --bg-overlay: rgba(0, 0, 0, 0.85);
+  --bg-modal: rgba(10, 10, 10, 0.95);
 }
 
 body {

@@ -69,8 +69,14 @@ export function SettingsModal({ isOpen, onClose, settings, saveSettings, selectV
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="w-[700px] h-[85vh] max-h-[700px] flex bg-[var(--bg-sidebar)] border border-[var(--border-glass-strong)] backdrop-blur-xl rounded-2xl shadow-2xl animate-slide-in-top text-[var(--text-main)] overflow-hidden">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm animate-fade-in"
+      style={{ backgroundColor: 'var(--bg-overlay)' }}
+    >
+      <div 
+        className="w-[700px] h-[85vh] max-h-[700px] flex border border-[var(--border-glass-strong)] backdrop-blur-xl rounded-2xl shadow-2xl animate-slide-in-top text-[var(--text-main)] overflow-hidden"
+        style={{ backgroundColor: 'var(--bg-modal)' }}
+      >
         
         {/* Sidebar */}
         <div className="w-[200px] bg-black/5 dark:bg-white/5 border-r border-[var(--border-glass)] flex flex-col p-4">
