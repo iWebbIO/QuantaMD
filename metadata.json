@@ -1,0 +1,6 @@
+{
+  "name": "Precision Workspace",
+  "description": "A glassmorphism-styled workspace with notes, kanban boards, and memo organization, supporting multiple precision themes.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
