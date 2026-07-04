@@ -121,7 +121,7 @@ function App() {
 
   return (
     <div className={cn("h-screen flex flex-col overflow-hidden transition-colors duration-300", theme === 'light' ? 'bg-[#f5f5f7]' : theme === 'amoled' ? 'bg-black' : 'bg-[#1c1c1e]')}>
-      {isElectron && <TitleBar vaultPath={vaultPath} activeFileName={activeFile?.name || null} />}
+      {isElectron && <TitleBar vaultPath={vaultPath} activeFileName={activeFile?.name || null} onOpenSearch={() => setIsCommandPaletteOpen(true)} />}
 
       <div className="flex-1 flex overflow-hidden">
         {/* Left Sidebar or Search Panel */}
@@ -161,8 +161,6 @@ function App() {
             onAddDirectory={addDirectory}
             onDeleteEntry={deleteEntry}
             onRenameEntry={renameEntry}
-            theme={theme}
-            setTheme={setTheme}
             onSelectVault={selectVault}
             onCloseVault={closeVault}
             onOpenSettings={() => setIsSettingsOpen(true)}
@@ -340,6 +338,8 @@ function App() {
         settings={settings}
         saveSettings={saveAppSettings}
         selectVault={selectVault}
+        theme={theme}
+        setTheme={setTheme}
       />
 
       <CommandPalette

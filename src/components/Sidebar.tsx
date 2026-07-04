@@ -3,10 +3,9 @@ import {
   Plus, FolderPlus, FileText, CheckSquare, Grid, Trash2, Edit2, 
   Folder, FolderOpen, ChevronDown, ChevronRight, Settings, 
   Layers, LogOut, Search, ExternalLink, Star, StarOff,
-  Calendar, Hash, Files, RotateCcw
+  Calendar, Hash, Files, RotateCcw, HelpCircle, ChevronsUpDown
 } from 'lucide-react';
 import { FileEntry, FileType, Theme, TrashEntry } from '../types';
-import { ThemeSelector } from './ThemeSelector';
 import { CalendarWidget } from './CalendarWidget';
 import { TagsPanel } from './TagsPanel';
 import { TrashPanel } from './TrashPanel';
@@ -24,8 +23,6 @@ interface Props {
   onAddDirectory: (name: string, parentPath?: string) => void;
   onDeleteEntry: (path: string, isDirectory: boolean) => void;
   onRenameEntry: (oldPath: string, newPath: string, isDirectory: boolean) => void;
-  theme: Theme;
-  setTheme: (t: Theme) => void;
   onSelectVault: () => void;
   onCloseVault: () => void;
   onOpenSettings: () => void;
@@ -66,8 +63,6 @@ export function Sidebar({
   onAddDirectory,
   onDeleteEntry,
   onRenameEntry,
-  theme,
-  setTheme,
   onSelectVault,
   onCloseVault,
   onOpenSettings,
@@ -350,95 +345,59 @@ export function Sidebar({
     );
   };
 
-  return (
-    <div className="w-64 h-full flex flex-col bg-[var(--bg-sidebar)] backdrop-blur-[var(--backdrop-blur)] border-r border-[var(--border-glass-strong)] transition-colors duration-300 select-none">
-      {/* Search & Vault Management Section */}
-      <div className="p-4 flex flex-col border-b border-[var(--border-glass)]">
-        {vaultPath ? (
-          <div className="flex flex-col gap-3">
-            {/* Action Bar */}
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                Workspace
-              </span>
-              <div className="flex gap-1">
-                <button
-                  onClick={onToggleGraph}
-                  className={cn(
-                    "p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-all",
-                    showGraph ? "text-[var(--accent)] bg-[var(--accent-light)]" : "text-[var(--text-muted)]"
-                  )}
-                  title="Toggle Graph Network"
-                >
-                  <Layers size={14} />
-                </button>
-                <button
-                  onClick={onOpenSettings}
-                  className="p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-all"
-                  title="App Settings"
-                >
-                  <Settings size={14} />
-                </button>
-                <button
-                  onClick={onCloseVault}
-                  className="p-1.5 rounded-lg hover:bg-red-500/10 text-red-500 hover:text-red-600 transition-all"
-                  title="Close Vault Folder"
-                >
-                  <LogOut size={14} />
-                </button>
-              </div>
-            </div>
+  const vaultName = vaultPath ? vaultPath.split('\\').pop() || vaultPath.split('/').pop() || 'Main Vault' : 'No Vault';
 
-            {/* Quick Command Instruction */}
-            <button
-              onClick={onOpenSearch}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-black/5 dark:bg-white/5 border border-[var(--border-glass)] text-[10px] text-[var(--text-muted)] font-medium hover:bg-black/10 dark:hover:bg-white/10 transition-all cursor-pointer"
-            >
-              <Search size={12} />
-              <span>Press <kbd className="font-sans font-semibold bg-black/10 dark:bg-white/10 px-1 rounded">Ctrl + P</kbd> for commands</span>
-            </button>
-          </div>
-        ) : (
-          <div className="py-4 text-center">
-            <h2 className="text-sm font-bold mb-3 tracking-tight">Open Local Vault</h2>
-            <button
-              onClick={onSelectVault}
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-[var(--accent)] text-white hover:opacity-90 rounded-xl text-xs font-bold transition-all shadow-md"
-            >
-              <FolderOpen size={14} /> Choose Folder
-            </button>
-            <p className="text-[10px] text-[var(--text-muted)] leading-relaxed mt-2.5">
-              Select any local directory on your disk to use as your vault. All files are stored locally in Markdown/JSON formats.
-            </p>
-          </div>
+  return (
+    <div className="flex h-full border-r border-[var(--border-glass-strong)] transition-colors duration-300 select-none bg-[var(--bg-sidebar)]">
+      {/* Activity Bar (Ribbon) */}
+      <div className="w-12 h-full flex flex-col items-center py-3 border-r border-[var(--border-glass)] backdrop-blur-[var(--backdrop-blur)] gap-2 flex-shrink-0 bg-black/5 dark:bg-white/5">
+        {vaultPath && ([
+          { mode: 'files' as SidebarMode, icon: <Files size={18} />, title: 'Files' },
+          { mode: 'search' as SidebarMode, icon: <Search size={18} />, title: 'Search', action: onOpenSearch },
+          { mode: 'tags' as SidebarMode, icon: <Hash size={18} />, title: 'Tags' },
+          { mode: 'calendar' as SidebarMode, icon: <Calendar size={18} />, title: 'Calendar' },
+          { mode: 'trash' as SidebarMode, icon: <Trash2 size={18} />, title: 'Trash' },
+        ]).map(item => (
+          <button
+            key={item.mode}
+            onClick={() => {
+              if (item.action) {
+                item.action();
+              } else {
+                setSidebarMode(item.mode);
+              }
+            }}
+            className={cn(
+              "w-8 h-8 flex items-center justify-center rounded-xl transition-all",
+              sidebarMode === item.mode && !item.action
+                ? "bg-[var(--accent)] text-white shadow-sm"
+                : "text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/10 dark:hover:bg-white/10"
+            )}
+            title={item.title}
+          >
+            {item.icon}
+          </button>
+        ))}
+        
+        <div className="flex-1" />
+        
+        {/* Bottom Ribbon Utilities */}
+        {vaultPath && (
+          <button
+            onClick={onToggleGraph}
+            className={cn(
+              "w-8 h-8 flex items-center justify-center rounded-xl transition-all",
+              showGraph ? "text-[var(--accent)] bg-[var(--accent-light)]" : "text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/10 dark:hover:bg-white/10"
+            )}
+            title="Toggle Graph Network"
+          >
+            <Layers size={18} />
+          </button>
         )}
       </div>
 
-      {/* Sidebar Mode Tabs */}
-      {vaultPath && (
-        <div className="flex items-center gap-0.5 px-3 py-2 border-b border-[var(--border-glass)]">
-          {([
-            { mode: 'files' as SidebarMode, icon: <Files size={13} />, title: 'Files' },
-            { mode: 'calendar' as SidebarMode, icon: <Calendar size={13} />, title: 'Calendar' },
-            { mode: 'tags' as SidebarMode, icon: <Hash size={13} />, title: 'Tags' },
-            { mode: 'trash' as SidebarMode, icon: <Trash2 size={13} />, title: 'Trash' },
-          ]).map(item => (
-            <button
-              key={item.mode}
-              onClick={() => setSidebarMode(item.mode)}
-              className={cn(
-                "flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px] font-semibold transition-all",
-                sidebarMode === item.mode
-                  ? "bg-[var(--accent)] text-white shadow-sm"
-                  : "text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5"
-              )}
-              title={item.title}
-            >
-              {item.icon}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Content Panel */}
+      <div className="w-64 h-full flex flex-col backdrop-blur-[var(--backdrop-blur)]">
 
       {/* Content Area */}
       <div className="flex-1 overflow-y-auto p-3 space-y-1">
@@ -556,15 +515,47 @@ export function Sidebar({
         )}
       </div>
 
-      {/* Theme and settings selector at the bottom */}
-      <div className="mt-auto p-4 mb-4 space-y-3">
-        <ThemeSelector theme={theme} setTheme={setTheme} />
-        {vaultPath && (
-          <div className="flex flex-col gap-1 text-[10px] text-[var(--text-muted)] border-t border-[var(--border-glass)] pt-3 truncate">
-            <span className="font-semibold text-xs tracking-wider uppercase text-[var(--text-muted)] opacity-60">Vault Path</span>
-            <span className="truncate opacity-80" title={vaultPath}>{vaultPath}</span>
+      {/* Bottom Action Bar (Vault Selector) */}
+      <div className="mt-auto flex items-center justify-between p-3 border-t border-[var(--border-glass)] bg-black/5 dark:bg-white/5 relative">
+        {vaultPath ? (
+          <>
+            <button
+              onClick={(e) => {
+                // simple custom menu context call
+                const items = [
+                  { id: 'manage', label: 'Manage vaults...', icon: <FolderOpen size={14} />, action: onSelectVault },
+                  { id: 'sep1', label: '', separator: true, action: () => {} },
+                  { id: 'close', label: 'Close Vault', icon: <LogOut size={14} />, action: onCloseVault }
+                ];
+                showMenu(e, items);
+              }}
+              className="flex items-center justify-between w-40 px-3 py-1.5 rounded-lg bg-[var(--bg-glass)] hover:bg-[var(--border-glass)] border border-[var(--border-glass)] transition-colors"
+            >
+              <span className="text-xs font-semibold text-[var(--text-main)] truncate mr-2">{vaultName}</span>
+              <ChevronsUpDown size={14} className="text-[var(--text-muted)] flex-shrink-0" />
+            </button>
+            <div className="flex gap-1">
+              <button className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/10 dark:hover:bg-white/10 transition-colors" title="Help">
+                <HelpCircle size={16} />
+              </button>
+              <button onClick={onOpenSettings} className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/10 dark:hover:bg-white/10 transition-colors" title="Settings">
+                <Settings size={16} />
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="w-full flex justify-center">
+            <button
+              onClick={onSelectVault}
+              className="flex items-center gap-2 py-1.5 px-4 bg-[var(--accent)] text-white hover:opacity-90 rounded-lg text-xs font-bold transition-all shadow-sm w-full justify-center"
+            >
+              <FolderOpen size={14} /> Open Vault
+            </button>
           </div>
         )}
+      </div>
+      
+      {/* End Content Panel */}
       </div>
       <ContextMenuComponent />
     </div>

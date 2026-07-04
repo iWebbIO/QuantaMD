@@ -1,6 +1,7 @@
 import { AppSettings, Theme } from '../types';
-import { X, Key, FolderOpen, Sliders, Palette, Keyboard, FileText } from 'lucide-react';
+import { X, Key, FolderOpen, Sliders, Palette, Keyboard, FileText, SunMoon } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { ThemeSelector } from './ThemeSelector';
 
 interface Props {
   isOpen: boolean;
@@ -8,6 +9,8 @@ interface Props {
   settings: AppSettings;
   saveSettings: (settings: Partial<AppSettings>) => void;
   selectVault: () => void;
+  theme: Theme;
+  setTheme: (t: Theme) => void;
 }
 
 const FONTS = [
@@ -28,7 +31,7 @@ const ACCENT_COLORS = [
   { id: '45 93% 47%', label: 'Amber', color: 'hsl(45, 93%, 47%)' },
 ];
 
-export function SettingsModal({ isOpen, onClose, settings, saveSettings, selectVault }: Props) {
+export function SettingsModal({ isOpen, onClose, settings, saveSettings, selectVault, theme, setTheme }: Props) {
   if (!isOpen) return null;
 
   return (
@@ -109,6 +112,14 @@ export function SettingsModal({ isOpen, onClose, settings, saveSettings, selectV
                 />
               ))}
             </div>
+          </div>
+
+          {/* Theme */}
+          <div className="space-y-3">
+            <label className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
+              <SunMoon size={14} /> Application Theme
+            </label>
+            <ThemeSelector theme={theme} setTheme={setTheme} />
           </div>
 
           {/* Typography configuration */}
