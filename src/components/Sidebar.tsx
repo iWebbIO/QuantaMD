@@ -11,7 +11,7 @@ import { CalendarWidget } from './CalendarWidget';
 import { TagsPanel } from './TagsPanel';
 import { TrashPanel } from './TrashPanel';
 import { cn } from '../lib/utils';
-
+import { useContextMenu, ContextMenuItem } from './ContextMenu';
 type SidebarMode = 'files' | 'search' | 'calendar' | 'tags' | 'trash';
 
 interface Props {
@@ -96,7 +96,34 @@ export function Sidebar({
   const [addingToFolder, setAddingToFolder] = useState<{ path: string; type: 'file' | 'folder' } | null>(null);
   const [newItemName, setNewItemName] = useState('');
   const [newFileType, setNewFileType] = useState<FileType>('md');
+  const { showMenu, ContextMenuComponent } = useContextMenu();
 
+  const handleContextMenu = (e: React.MouseEvent, node: FileEntry) => {
+    const items: ContextMenuItem[] = [];
+
+    if (node.isDirectory) {
+      items.push({ id: 'new-file', label: 'New File', icon: <Plus size={14} />, action: () => handleStartAdd(e as any, node.path, 'file') });
+      items.push({ id: 'new-folder', label: 'New Folder', icon: <FolderPlus size={14} />, action: () => handleStartAdd(e as any, node.path, 'folder') });
+      items.push({ id: 'sep1', label: '', separator: true, action: () => {} });
+    } else {
+      if (isFavorite(node.path)) {
+        items.push({ id: 'unfav', label: 'Remove from Favorites', icon: <StarOff size={14} />, action: () => onToggleFavorite(node.path) });
+      } else {
+        items.push({ id: 'fav', label: 'Add to Favorites', icon: <Star size={14} />, action: () => onToggleFavorite(node.path) });
+      }
+      items.push({ id: 'reveal', label: 'Reveal in Explorer', icon: <ExternalLink size={14} />, action: () => onShowInExplorer(node.path) });
+      items.push({ id: 'sep1', label: '', separator: true, action: () => {} });
+    }
+
+    items.push({ id: 'rename', label: 'Rename', icon: <Edit2 size={14} />, action: () => handleStartRename(e as any, node) });
+    items.push({ id: 'delete', label: 'Delete', icon: <Trash2 size={14} />, action: () => {
+      if (confirm(`Are you sure you want to delete ${node.name}?`)) {
+        onDeleteEntry(node.path, node.isDirectory);
+      }
+    }, danger: true });
+
+    showMenu(e, items);
+  };
   const toggleFolder = (path: string) => {
     setExpandedFolders(prev => ({ ...prev, [path]: !prev[path] }));
   };
@@ -173,6 +200,7 @@ export function Sidebar({
             isActive && "bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 shadow-sm"
           )}
           style={{ paddingLeft: `${depth * 12 + 8}px` }}
+          onContextMenu={(e) => handleContextMenu(e, node)}
           onClick={() => {
             if (node.isDirectory) {
               toggleFolder(node.path);
@@ -211,71 +239,6 @@ export function Sidebar({
             )}
           </div>
 
-          {/* Action buttons (Visible on hover in sidebar) */}
-          {!isEditing && (
-            <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity gap-1 text-[var(--text-muted)] group-hover:text-[var(--text-muted)]">
-              {/* Favorite toggle for files */}
-              {!node.isDirectory && (
-                <button
-                  onClick={e => { e.stopPropagation(); onToggleFavorite(node.path); }}
-                  className={cn("p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10", isActive && "hover:bg-white/20 text-white")}
-                  title={isFavorite(node.path) ? 'Remove from favorites' : 'Add to favorites'}
-                >
-                  {isFavorite(node.path) ? <Star size={12} className="fill-current text-amber-500" /> : <StarOff size={12} />}
-                </button>
-              )}
-
-              {node.isDirectory && (
-                <>
-                  <button
-                    onClick={e => handleStartAdd(e, node.path, 'file')}
-                    className={cn("p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10", isActive && "hover:bg-white/20 text-white")}
-                    title="New File"
-                  >
-                    <Plus size={12} />
-                  </button>
-                  <button
-                    onClick={e => handleStartAdd(e, node.path, 'folder')}
-                    className={cn("p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10", isActive && "hover:bg-white/20 text-white")}
-                    title="New Folder"
-                  >
-                    <FolderPlus size={12} />
-                  </button>
-                </>
-              )}
-              
-              {!node.isDirectory && (
-                <button
-                  onClick={e => { e.stopPropagation(); onShowInExplorer(node.path); }}
-                  className={cn("p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10", isActive && "hover:bg-white/20 text-white")}
-                  title="Reveal in File Explorer"
-                >
-                  <ExternalLink size={12} />
-                </button>
-              )}
-
-              <button
-                onClick={e => handleStartRename(e, node)}
-                className={cn("p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10", isActive && "hover:bg-white/20 text-white")}
-                title="Rename"
-              >
-                <Edit2 size={12} />
-              </button>
-
-              <button
-                onClick={e => {
-                  e.stopPropagation();
-                  if (confirm(`Are you sure you want to delete ${node.name}?`)) {
-                    onDeleteEntry(node.path, node.isDirectory);
-                  }
-                }}
-                className={cn("p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10 text-red-500", isActive && "text-white hover:bg-red-500/20")}
-                title="Delete"
-              >
-                <Trash2 size={12} />
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Input for adding a child under this folder */}
@@ -603,6 +566,7 @@ export function Sidebar({
           </div>
         )}
       </div>
+      <ContextMenuComponent />
     </div>
   );
 }

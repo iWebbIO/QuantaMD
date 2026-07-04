@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { WorkspaceFile, TaskItem, TaskStatus, TaskPriority, SubTask } from '../../types';
-import { Plus, GripVertical, CheckCircle2, Clock, ListTodo, AlertCircle, X, CheckSquare, Calendar, AlignLeft, Flag } from 'lucide-react';
+import { Plus, GripVertical, CheckCircle2, Clock, ListTodo, AlertCircle, X, CheckSquare, Calendar, AlignLeft, Flag, Edit2, Trash2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { useContextMenu, ContextMenuItem } from '../ContextMenu';
 
 interface Props {
   file: WorkspaceFile;
@@ -28,6 +29,19 @@ export function TasksEditor({ file, onChange }: Props) {
   
   // Detail Modal State
   const [editingTask, setEditingTask] = useState<TaskItem | null>(null);
+  const { showMenu, ContextMenuComponent } = useContextMenu();
+
+  const handleContextMenu = (e: React.MouseEvent, task: TaskItem) => {
+    e.preventDefault();
+    e.stopPropagation();
+    showMenu(e, [
+      { id: 'edit', label: 'Edit Task Details', icon: <Edit2 size={14} />, action: () => setEditingTask(task) },
+      { id: 'delete', label: 'Delete Task', icon: <Trash2 size={14} />, action: () => {
+          if (confirm('Are you sure you want to delete this task?')) deleteTask(task.id);
+        }, danger: true 
+      }
+    ]);
+  };
 
   useEffect(() => {
     try {
@@ -132,7 +146,8 @@ export function TasksEditor({ file, onChange }: Props) {
         key={task.id}
         draggable
         onDragStart={(e) => handleDragStart(e, task)}
-        onClick={() => setEditingTask(task)}
+        onDoubleClick={() => setEditingTask(task)}
+        onContextMenu={(e) => handleContextMenu(e, task)}
         className={cn(
           "group flex flex-col gap-2 p-3 bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-xl cursor-grab active:cursor-grabbing hover:bg-[var(--bg-glass-hover)] hover:-translate-y-0.5 hover:shadow-lg transition-all animate-fade-in",
           priorityObj?.colorClass,
@@ -355,7 +370,7 @@ export function TasksEditor({ file, onChange }: Props) {
             readOnly
           />
           <span className="text-xs text-[var(--text-muted)] font-medium mt-1 flex items-center gap-2">
-            <AlertCircle size={12} /> Drag tasks between columns or click to edit details
+            <AlertCircle size={12} /> Drag tasks to move, double-click or right-click to edit/delete
           </span>
         </div>
       </div>
@@ -408,6 +423,7 @@ export function TasksEditor({ file, onChange }: Props) {
         })}
       </div>
       {renderModal()}
+      <ContextMenuComponent />
     </div>
   );
 }

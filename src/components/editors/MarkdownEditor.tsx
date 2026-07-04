@@ -11,6 +11,7 @@ import {
 import { WorkspaceFile, Theme } from '../../types';
 import { markdownLivePreview } from './markdownLivePreview';
 import { cn } from '../../lib/utils';
+import { useContextMenu, ContextMenuItem } from '../ContextMenu';
 
 import { vim } from '@replit/codemirror-vim';
 interface Props {
@@ -23,6 +24,29 @@ interface Props {
 export function MarkdownEditor({ file, onChange, theme, vimMode = false }: Props) {
   const [content, setContent] = useState(file.content);
   const editorRef = useRef<{ view?: EditorView }>(null);
+  const { showMenu, ContextMenuComponent } = useContextMenu();
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const items: ContextMenuItem[] = [
+      { id: 'bold', label: 'Bold', icon: <Bold size={14} />, action: () => insertSyntax('**', '**') },
+      { id: 'italic', label: 'Italic', icon: <Italic size={14} />, action: () => insertSyntax('*', '*') },
+      { id: 'strikethrough', label: 'Strikethrough', icon: <Strikethrough size={14} />, action: () => insertSyntax('~~', '~~') },
+      { id: 'sep1', label: '', separator: true, action: () => {} },
+      { id: 'h1', label: 'Heading 1', icon: <Heading size={14} />, action: () => insertLinePrefix('# ') },
+      { id: 'h2', label: 'Heading 2', icon: <Heading size={14} />, action: () => insertLinePrefix('## ') },
+      { id: 'h3', label: 'Heading 3', icon: <Heading size={14} />, action: () => insertLinePrefix('### ') },
+      { id: 'sep2', label: '', separator: true, action: () => {} },
+      { id: 'link', label: 'Link', icon: <Link size={14} />, action: () => insertSyntax('[', '](url)') },
+      { id: 'code', label: 'Inline Code', icon: <Code size={14} />, action: () => insertSyntax('`', '`') },
+      { id: 'sep3', label: '', separator: true, action: () => {} },
+      { id: 'bullet', label: 'Bulleted List', icon: <List size={14} />, action: () => insertLinePrefix('- ') },
+      { id: 'num', label: 'Numbered List', icon: <ListOrdered size={14} />, action: () => insertLinePrefix('1. ') },
+      { id: 'task', label: 'Task List', icon: <CheckSquare size={14} />, action: () => insertLinePrefix('- [ ] ') },
+      { id: 'hr', label: 'Horizontal Rule', icon: <Minus size={14} />, action: () => insertLinePrefix('\n---\n') },
+    ];
+    showMenu(e, items);
+  };
 
   useEffect(() => {
     setContent(file.content);
@@ -134,47 +158,11 @@ export function MarkdownEditor({ file, onChange, theme, vimMode = false }: Props
         </div>
       </div>
 
-      {/* Editor Toolbar */}
-      <div className="px-8 pb-4 sticky top-0 z-10">
-        <div className="editor-toolbar inline-flex shadow-sm">
-          <button onClick={() => insertSyntax('**', '**')} title="Bold (Ctrl+B)">
-            <Bold size={14} />
-          </button>
-          <button onClick={() => insertSyntax('*', '*')} title="Italic (Ctrl+I)">
-            <Italic size={14} />
-          </button>
-          <button onClick={() => insertSyntax('~~', '~~')} title="Strikethrough">
-            <Strikethrough size={14} />
-          </button>
-          <div className="separator" />
-          <button onClick={() => insertLinePrefix('## ')} title="Heading">
-            <Heading size={14} />
-          </button>
-          <div className="separator" />
-          <button onClick={() => insertSyntax('[', '](url)')} title="Link">
-            <Link size={14} />
-          </button>
-          <button onClick={() => insertSyntax('`', '`')} title="Inline Code">
-            <Code size={14} />
-          </button>
-          <div className="separator" />
-          <button onClick={() => insertLinePrefix('- ')} title="Bulleted List">
-            <List size={14} />
-          </button>
-          <button onClick={() => insertLinePrefix('1. ')} title="Numbered List">
-            <ListOrdered size={14} />
-          </button>
-          <button onClick={() => insertLinePrefix('- [ ] ')} title="Task List">
-            <CheckSquare size={14} />
-          </button>
-          <button onClick={() => insertLinePrefix('\n---\n')} title="Horizontal Rule">
-            <Minus size={14} />
-          </button>
-        </div>
-      </div>
-
       {/* CodeMirror Editor Area */}
-      <div className="flex-1 overflow-hidden relative">
+      <div 
+        className="flex-1 overflow-hidden relative"
+        onContextMenu={handleContextMenu}
+      >
         <CodeMirror
           value={content}
           height="100%"
@@ -197,6 +185,7 @@ export function MarkdownEditor({ file, onChange, theme, vimMode = false }: Props
           ref={editorRef}
         />
       </div>
+      <ContextMenuComponent />
     </div>
   );
 }

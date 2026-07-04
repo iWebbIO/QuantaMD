@@ -1,0 +1,205 @@
+{
+  "nodes": [
+    {
+      "id": "rules_graphify_knowledge_graph",
+      "label": "Graphify Knowledge Graph",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\W\\Documents\\GitHub\\QuantaMD\\.agents\\rules\\graphify.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "rules_graphify_query",
+      "label": "graphify query",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\W\\Documents\\GitHub\\QuantaMD\\.agents\\rules\\graphify.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "rationale": "Returns a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output"
+    },
+    {
+      "id": "rules_graphify_path",
+      "label": "graphify path",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\W\\Documents\\GitHub\\QuantaMD\\.agents\\rules\\graphify.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "rationale": "For relationships"
+    },
+    {
+      "id": "rules_graphify_explain",
+      "label": "graphify explain",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\W\\Documents\\GitHub\\QuantaMD\\.agents\\rules\\graphify.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "rationale": "For focused concepts"
+    },
+    {
+      "id": "rules_graphify_update",
+      "label": "graphify update",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\W\\Documents\\GitHub\\QuantaMD\\.agents\\rules\\graphify.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "rationale": "Keep the graph current after modifying code files"
+    },
+    {
+      "id": "workflows_graphify_workflow",
+      "label": "graphify workflow",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\W\\Documents\\GitHub\\QuantaMD\\.agents\\workflows\\graphify.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "workflows_graphify_skill",
+      "label": "graphify skill",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\W\\Documents\\GitHub\\QuantaMD\\.agents\\workflows\\graphify.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_ai_studio_app",
+      "label": "AI Studio App",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\W\\Documents\\GitHub\\QuantaMD\\README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_gemini_api_key",
+      "label": "GEMINI_API_KEY",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\W\\Documents\\GitHub\\QuantaMD\\README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "index_main_tsx",
+      "label": "main.tsx script",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\W\\Documents\\GitHub\\QuantaMD\\index.html",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "rationale": "Main entry point for the React application"
+    },
+    {
+      "id": "index_content_security_policy",
+      "label": "Content Security Policy",
+      "file_type": "concept",
+      "source_file": "C:\\Users\\W\\Documents\\GitHub\\QuantaMD\\index.html",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "workflows_graphify_workflow",
+      "target": "workflows_graphify_skill",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "C:\\Users\\W\\Documents\\GitHub\\QuantaMD\\.agents\\workflows\\graphify.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "workflows_graphify_workflow",
+      "target": "rules_graphify_knowledge_graph",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "C:\\Users\\W\\Documents\\GitHub\\QuantaMD\\.agents\\workflows\\graphify.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "rules_graphify_knowledge_graph",
+      "target": "rules_graphify_query",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "C:\\Users\\W\\Documents\\GitHub\\QuantaMD\\.agents\\rules\\graphify.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "rules_graphify_knowledge_graph",
+      "target": "rules_graphify_path",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "C:\\Users\\W\\Documents\\GitHub\\QuantaMD\\.agents\\rules\\graphify.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "rules_graphify_knowledge_graph",
+      "target": "rules_graphify_explain",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "C:\\Users\\W\\Documents\\GitHub\\QuantaMD\\.agents\\rules\\graphify.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "rules_graphify_knowledge_graph",
+      "target": "rules_graphify_update",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "C:\\Users\\W\\Documents\\GitHub\\QuantaMD\\.agents\\rules\\graphify.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_ai_studio_app",
+      "target": "readme_gemini_api_key",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "C:\\Users\\W\\Documents\\GitHub\\QuantaMD\\README.md",
+      "source_location": null,
+      "weight": 1.0
+    }
+  ],
+  "hyperedges": [],
+  "input_tokens": 0,
+  "output_tokens": 0
+}

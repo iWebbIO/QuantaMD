@@ -1,0 +1,4 @@
+C:\Users\W\Documents\GitHub\QuantaMD\.agents\rules\graphify.md
+C:\Users\W\Documents\GitHub\QuantaMD\.agents\workflows\graphify.md
+C:\Users\W\Documents\GitHub\QuantaMD\README.md
+C:\Users\W\Documents\GitHub\QuantaMD\index.html

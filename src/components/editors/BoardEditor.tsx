@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { WorkspaceFile, BoardItem, BoardItemType } from '../../types';
-import { ExternalLink, Hash, Link as LinkIcon, StickyNote, Github, Plus, X, Grid } from 'lucide-react';
+import { ExternalLink, Hash, Link as LinkIcon, StickyNote, Github, Plus, X, Grid, Edit2, Trash2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { useContextMenu, ContextMenuItem } from '../ContextMenu';
 
 interface Props {
   file: WorkspaceFile;
@@ -23,6 +24,19 @@ export function BoardEditor({ file, onChange }: Props) {
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
   const [editUrl, setEditUrl] = useState('');
+  const { showMenu, ContextMenuComponent } = useContextMenu();
+
+  const handleContextMenu = (e: React.MouseEvent, item: BoardItem) => {
+    e.preventDefault();
+    e.stopPropagation();
+    showMenu(e, [
+      { id: 'edit', label: 'Edit Content', icon: <Edit2 size={14} />, action: () => startEditing(item) },
+      { id: 'delete', label: 'Delete Item', icon: <Trash2 size={14} />, action: () => {
+          if (confirm('Are you sure you want to delete this item?')) deleteItem(item.id);
+        }, danger: true 
+      }
+    ]);
+  };
 
   useEffect(() => {
     try {
@@ -162,6 +176,7 @@ export function BoardEditor({ file, onChange }: Props) {
         onDragOver={e => handleDragOver(e, item)}
         onDrop={handleDrop}
         onDoubleClick={() => startEditing(item)}
+        onContextMenu={(e) => handleContextMenu(e, item)}
         className={cn(
           "relative group bg-[var(--bg-glass)] backdrop-blur-[var(--backdrop-blur)] border border-[var(--border-glass-strong)] rounded-2xl p-5 break-inside-avoid shadow-sm hover:shadow-lg transition-all hover:-translate-y-1 cursor-grab active:cursor-grabbing",
           isDragging && "opacity-50 scale-95"
@@ -172,12 +187,6 @@ export function BoardEditor({ file, onChange }: Props) {
             <Icon size={16} />
             <span className="text-[10px] font-bold uppercase tracking-wider">{item.type}</span>
           </div>
-          <button
-            onClick={() => deleteItem(item.id)}
-            className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-red-500/10 text-red-500 transition-all"
-          >
-            <X size={14} />
-          </button>
         </div>
 
         <h3 className="text-base font-bold text-[var(--text-main)] mb-2 leading-tight">
@@ -226,7 +235,7 @@ export function BoardEditor({ file, onChange }: Props) {
             readOnly
           />
           <span className="text-xs text-[var(--text-muted)] font-medium mt-1">
-            Double-click a card to edit inline. Drag to reorder.
+            Double-click or right-click a card to edit. Drag to reorder.
           </span>
         </div>
 
@@ -257,6 +266,7 @@ export function BoardEditor({ file, onChange }: Props) {
           </div>
         )}
       </div>
+      <ContextMenuComponent />
     </div>
   );
 }
