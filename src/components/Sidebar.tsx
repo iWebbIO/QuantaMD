@@ -1,122 +1,439 @@
-import { Plus, FileText, CheckSquare, Grid, Trash2 } from 'lucide-react';
-import { WorkspaceFile, FileType } from '../types';
+import { useState } from 'react';
+import { 
+  Plus, FolderPlus, FileText, CheckSquare, Grid, Trash2, Edit2, 
+  Folder, FolderOpen, ChevronDown, ChevronRight, Settings, 
+  Layers, LogOut, Search, ExternalLink 
+} from 'lucide-react';
+import { FileEntry, FileType, Theme } from '../types';
 import { ThemeSelector } from './ThemeSelector';
 import { cn } from '../lib/utils';
-import { useState } from 'react';
-import { Theme } from '../types';
 
 interface Props {
-  files: WorkspaceFile[];
+  isElectron: boolean;
+  vaultPath: string | null;
+  filesTree: FileEntry[];
   activeFileId: string | null;
-  onSelect: (id: string) => void;
-  onAdd: (name: string, type: FileType) => void;
-  onDelete: (id: string) => void;
+  onSelectFile: (path: string, type: FileType, name: string) => void;
+  onAddFile: (name: string, type: FileType, parentPath?: string) => void;
+  onAddDirectory: (name: string, parentPath?: string) => void;
+  onDeleteEntry: (path: string, isDirectory: boolean) => void;
+  onRenameEntry: (oldPath: string, newPath: string, isDirectory: boolean) => void;
   theme: Theme;
   setTheme: (t: Theme) => void;
+  onSelectVault: () => void;
+  onCloseVault: () => void;
+  onOpenSettings: () => void;
+  onToggleGraph: () => void;
+  showGraph: boolean;
+  onShowInExplorer: (path: string) => void;
 }
 
 const TYPE_ICONS = {
-  md: <FileText size={16} />,
-  Tasks: <CheckSquare size={16} />,
-  Board: <Grid size={16} />
+  md: <FileText size={14} />,
+  Tasks: <CheckSquare size={14} />,
+  Board: <Grid size={14} />
 };
 
-export function Sidebar({ files, activeFileId, onSelect, onAdd, onDelete, theme, setTheme }: Props) {
-  const [isAdding, setIsAdding] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [newType, setNewType] = useState<FileType>('md');
+export function Sidebar({
+  isElectron,
+  vaultPath,
+  filesTree,
+  activeFileId,
+  onSelectFile,
+  onAddFile,
+  onAddDirectory,
+  onDeleteEntry,
+  onRenameEntry,
+  theme,
+  setTheme,
+  onSelectVault,
+  onCloseVault,
+  onOpenSettings,
+  onToggleGraph,
+  showGraph,
+  onShowInExplorer
+}: Props) {
+  const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
+  const [editingPath, setEditingPath] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  
+  // Adding items helper state
+  const [addingToFolder, setAddingToFolder] = useState<{ path: string; type: 'file' | 'folder' } | null>(null);
+  const [newItemName, setNewItemName] = useState('');
+  const [newFileType, setNewFileType] = useState<FileType>('md');
 
-  const handleAdd = () => {
-    if (newName.trim()) {
-      onAdd(newName.trim(), newType);
-      setNewName('');
-      setIsAdding(false);
+  const toggleFolder = (path: string) => {
+    setExpandedFolders(prev => ({ ...prev, [path]: !prev[path] }));
+  };
+
+  const handleStartRename = (e: React.MouseEvent, entry: FileEntry) => {
+    e.stopPropagation();
+    setEditingPath(entry.path);
+    setEditName(entry.name);
+  };
+
+  const handleFinishRename = (entry: FileEntry) => {
+    if (editName.trim() && editName !== entry.name) {
+      const parentDir = entry.path.substring(0, entry.path.lastIndexOf('\\'));
+      let newPath = '';
+      if (entry.isDirectory) {
+        newPath = parentDir + '\\' + editName.trim();
+      } else {
+        const ext = entry.path.substring(entry.path.lastIndexOf('.'));
+        newPath = parentDir + '\\' + editName.trim() + ext;
+      }
+      onRenameEntry(entry.path, newPath, entry.isDirectory);
     }
+    setEditingPath(null);
+  };
+
+  const handleStartAdd = (e: React.MouseEvent, path: string, type: 'file' | 'folder') => {
+    e.stopPropagation();
+    setExpandedFolders(prev => ({ ...prev, [path]: true }));
+    setAddingToFolder({ path, type });
+    setNewItemName('');
+    setNewFileType('md');
+  };
+
+  const handleFinishAdd = () => {
+    if (newItemName.trim() && addingToFolder) {
+      if (addingToFolder.type === 'file') {
+        onAddFile(newItemName.trim(), newFileType, addingToFolder.path);
+      } else {
+        onAddDirectory(newItemName.trim(), addingToFolder.path);
+      }
+    }
+    setAddingToFolder(null);
+  };
+
+  // Render a single file or folder node recursively
+  const renderNode = (node: FileEntry, depth = 0) => {
+    const isExpanded = !!expandedFolders[node.path];
+    const isEditing = editingPath === node.path;
+    const isActive = activeFileId === node.path;
+    
+    const isAddingHere = addingToFolder?.path === node.path;
+
+    return (
+      <div key={node.path} className="flex flex-col">
+        {/* Row element */}
+        <div
+          className={cn(
+            "group flex items-center justify-between py-1.5 pr-2 rounded-xl text-xs font-medium cursor-pointer transition-all select-none hover:bg-black/5 dark:hover:bg-white/5",
+            isActive && "bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 shadow-sm"
+          )}
+          style={{ paddingLeft: `${depth * 12 + 8}px` }}
+          onClick={() => {
+            if (node.isDirectory) {
+              toggleFolder(node.path);
+            } else {
+              onSelectFile(node.path, node.type as FileType, node.name);
+            }
+          }}
+        >
+          <div className="flex items-center gap-2 truncate flex-1 mr-2">
+            {node.isDirectory ? (
+              <span className="opacity-70 flex-shrink-0">
+                {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              </span>
+            ) : (
+              <span className={cn("opacity-70 flex-shrink-0", !isActive && "text-[var(--accent)]")}>
+                {TYPE_ICONS[node.type as FileType] || <FileText size={14} />}
+              </span>
+            )}
+
+            {isEditing ? (
+              <input
+                type="text"
+                autoFocus
+                value={editName}
+                onChange={e => setEditName(e.target.value)}
+                onBlur={() => handleFinishRename(node)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') handleFinishRename(node);
+                  if (e.key === 'Escape') setEditingPath(null);
+                }}
+                onClick={e => e.stopPropagation()}
+                className="bg-transparent border-b border-[var(--accent)] outline-none text-xs w-full py-0 px-0.5 text-[var(--text-main)]"
+              />
+            ) : (
+              <span className="truncate">{node.name}</span>
+            )}
+          </div>
+
+          {/* Action buttons (Visible on hover in sidebar) */}
+          {!isEditing && (
+            <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity gap-1 text-[var(--text-muted)] group-hover:text-[var(--text-muted)]">
+              {node.isDirectory && (
+                <>
+                  <button
+                    onClick={e => handleStartAdd(e, node.path, 'file')}
+                    className={cn("p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10", isActive && "hover:bg-white/20 text-white")}
+                    title="New File"
+                  >
+                    <Plus size={12} />
+                  </button>
+                  <button
+                    onClick={e => handleStartAdd(e, node.path, 'folder')}
+                    className={cn("p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10", isActive && "hover:bg-white/20 text-white")}
+                    title="New Folder"
+                  >
+                    <FolderPlus size={12} />
+                  </button>
+                </>
+              )}
+              
+              {!node.isDirectory && (
+                <button
+                  onClick={e => { e.stopPropagation(); onShowInExplorer(node.path); }}
+                  className={cn("p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10", isActive && "hover:bg-white/20 text-white")}
+                  title="Reveal in File Explorer"
+                >
+                  <ExternalLink size={12} />
+                </button>
+              )}
+
+              <button
+                onClick={e => handleStartRename(e, node)}
+                className={cn("p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10", isActive && "hover:bg-white/20 text-white")}
+                title="Rename"
+              >
+                <Edit2 size={12} />
+              </button>
+
+              <button
+                onClick={e => {
+                  e.stopPropagation();
+                  if (confirm(`Are you sure you want to delete ${node.name}?`)) {
+                    onDeleteEntry(node.path, node.isDirectory);
+                  }
+                }}
+                className={cn("p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10 text-red-500", isActive && "text-white hover:bg-red-500/20")}
+                title="Delete"
+              >
+                <Trash2 size={12} />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Input for adding a child under this folder */}
+        {isExpanded && isAddingHere && addingToFolder && (
+          <div 
+            className="flex flex-col bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-xl p-2.5 my-1 mx-2"
+            style={{ marginLeft: `${(depth + 1) * 12}px` }}
+          >
+            <input
+              type="text"
+              autoFocus
+              placeholder={addingToFolder.type === 'file' ? 'File name...' : 'Folder name...'}
+              value={newItemName}
+              onChange={e => setNewItemName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleFinishAdd()}
+              className="bg-transparent text-xs mb-2 outline-none border-b border-[var(--border-glass)] pb-1 placeholder:text-[var(--text-muted)] text-[var(--text-main)]"
+            />
+            {addingToFolder.type === 'file' && (
+              <div className="flex gap-1 mb-2">
+                {(['md', 'Tasks', 'Board'] as FileType[]).map(t => (
+                  <button
+                    key={t}
+                    onClick={() => setNewFileType(t)}
+                    className={cn(
+                      "flex-1 p-1 rounded flex justify-center text-[10px] transition-all",
+                      newFileType === t ? "bg-[var(--accent)] text-white" : "hover:bg-black/5 dark:hover:bg-white/10 text-[var(--text-muted)]"
+                    )}
+                    title={t}
+                  >
+                    {TYPE_ICONS[t]}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-2 justify-end text-[10px] font-semibold">
+              <button onClick={() => setAddingToFolder(null)} className="px-2 py-1 rounded hover:bg-black/5 dark:hover:bg-white/10 text-[var(--text-muted)]">Cancel</button>
+              <button onClick={handleFinishAdd} className="px-2.5 py-1 rounded bg-[var(--accent)] text-white">Create</button>
+            </div>
+          </div>
+        )}
+
+        {/* Render child subnodes */}
+        {node.isDirectory && isExpanded && node.children && (
+          <div className="flex flex-col">
+            {node.children.map(child => renderNode(child, depth + 1))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // State to support adding new files at root
+  const [isAddingAtRoot, setIsAddingAtRoot] = useState<{ type: 'file' | 'folder' } | null>(null);
+
+  const handleFinishRootAdd = () => {
+    if (newItemName.trim() && isAddingAtRoot && vaultPath) {
+      if (isAddingAtRoot.type === 'file') {
+        onAddFile(newItemName.trim(), newFileType, vaultPath);
+      } else {
+        onAddDirectory(newItemName.trim(), vaultPath);
+      }
+    }
+    setIsAddingAtRoot(null);
+  };
+
+  const handleRootAddClick = (type: 'file' | 'folder') => {
+    setIsAddingAtRoot({ type });
+    setNewItemName('');
+    setNewFileType('md');
   };
 
   return (
-    <div className="w-64 h-full flex flex-col bg-[var(--bg-sidebar)] backdrop-blur-[var(--backdrop-blur)] border-r border-[var(--border-glass-strong)] transition-colors duration-300">
-      <div className="p-4 pt-8">
-        <h1 className="text-sm font-semibold tracking-wide uppercase text-[var(--text-muted)] mb-6">Workspace</h1>
-        
-        <div className="space-y-1">
-          {files.map(file => (
-            <div
-              key={file.id}
-              className={cn(
-                "group flex items-center justify-between px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer",
-                activeFileId === file.id 
-                  ? "bg-[var(--accent)] text-white shadow-md" 
-                  : "text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10"
-              )}
-              onClick={() => onSelect(file.id)}
-            >
-              <div className="flex items-center gap-3 truncate">
-                <span className={cn("opacity-70", activeFileId === file.id ? "text-white" : "text-[var(--accent)]")}>
-                  {TYPE_ICONS[file.type]}
-                </span>
-                <span className="truncate">{file.name}</span>
-              </div>
-              
-              <button 
-                onClick={(e) => { e.stopPropagation(); onDelete(file.id); }}
-                className={cn(
-                  "opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-black/20 dark:hover:bg-white/20",
-                  activeFileId === file.id ? "text-white" : "text-red-500"
-                )}
-              >
-                <Trash2 size={14} />
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-4 px-4">
-        {isAdding ? (
-          <div className="bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-xl p-3 shadow-[var(--shadow-sm)]">
-            <input 
-              type="text"
-              autoFocus
-              value={newName}
-              onChange={e => setNewName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleAdd()}
-              placeholder="File name..."
-              className="w-full bg-transparent text-sm mb-3 outline-none placeholder:text-[var(--text-muted)] text-[var(--text-main)]"
-            />
-            <div className="flex gap-2 mb-3">
-              {(['md', 'Tasks', 'Board'] as FileType[]).map(t => (
+    <div className="w-64 h-full flex flex-col bg-[var(--bg-sidebar)] backdrop-blur-[var(--backdrop-blur)] border-r border-[var(--border-glass-strong)] transition-colors duration-300 select-none">
+      {/* Search & Vault Management Section */}
+      <div className="p-4 flex flex-col border-b border-[var(--border-glass)]">
+        {vaultPath ? (
+          <div className="flex flex-col gap-3">
+            {/* Action Bar */}
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                Files Explorer
+              </span>
+              <div className="flex gap-1">
                 <button
-                  key={t}
-                  onClick={() => setNewType(t)}
+                  onClick={onToggleGraph}
                   className={cn(
-                    "flex-1 p-1.5 rounded-lg flex justify-center transition-all",
-                    newType === t ? "bg-[var(--accent)] text-white" : "hover:bg-black/5 dark:hover:bg-white/10 text-[var(--text-muted)]"
+                    "p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-all",
+                    showGraph ? "text-[var(--accent)] bg-[var(--accent-light)]" : "text-[var(--text-muted)]"
                   )}
-                  title={t}
+                  title="Toggle Graph Network"
                 >
-                  {TYPE_ICONS[t]}
+                  <Layers size={14} />
                 </button>
-              ))}
+                <button
+                  onClick={onOpenSettings}
+                  className="p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-all"
+                  title="App Settings"
+                >
+                  <Settings size={14} />
+                </button>
+                <button
+                  onClick={onCloseVault}
+                  className="p-1.5 rounded-lg hover:bg-red-500/10 text-red-500 hover:text-red-600 transition-all"
+                  title="Close Vault Folder"
+                >
+                  <LogOut size={14} />
+                </button>
+              </div>
             </div>
-            <div className="flex gap-2 text-xs font-medium">
-              <button onClick={() => setIsAdding(false)} className="flex-1 py-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 text-[var(--text-muted)]">Cancel</button>
-              <button onClick={handleAdd} className="flex-1 py-1.5 rounded-lg bg-[var(--text-main)] text-[var(--bg-base)]">Create</button>
+
+            {/* Quick Command Instruction */}
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-black/5 dark:bg-white/5 border border-[var(--border-glass)] text-[10px] text-[var(--text-muted)] font-medium">
+              <Search size={12} />
+              <span>Press <kbd className="font-sans font-semibold bg-black/10 dark:bg-white/10 px-1 rounded">Ctrl + P</kbd> for commands</span>
             </div>
           </div>
         ) : (
-          <button 
-            onClick={() => setIsAdding(true)}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 transition-all duration-200"
-          >
-            <Plus size={16} />
-            <span>New File</span>
-          </button>
+          <div className="py-4 text-center">
+            <h2 className="text-sm font-bold mb-3 tracking-tight">Open Local Vault</h2>
+            <button
+              onClick={onSelectVault}
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 rounded-xl text-xs font-bold transition-all shadow-md"
+            >
+              <FolderOpen size={14} /> Choose Folder
+            </button>
+            <p className="text-[10px] text-[var(--text-muted)] leading-relaxed mt-2.5">
+              Select any local directory on your disk to use as your vault. All files are stored locally in Markdown/JSON formats.
+            </p>
+          </div>
         )}
       </div>
 
-      <div className="mt-auto p-4 mb-4">
+      {/* File Tree Area */}
+      <div className="flex-1 overflow-y-auto p-3 space-y-1">
+        {vaultPath ? (
+          <>
+            {/* Root add buttons */}
+            <div className="flex justify-between items-center mb-2 px-1 text-[var(--text-muted)]">
+              <span className="text-[10px] font-bold uppercase tracking-wider">ROOT</span>
+              <div className="flex gap-1">
+                <button 
+                  onClick={() => handleRootAddClick('file')} 
+                  className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/5 hover:text-[var(--text-main)]"
+                  title="Add File at Root"
+                >
+                  <Plus size={12} />
+                </button>
+                <button 
+                  onClick={() => handleRootAddClick('folder')} 
+                  className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/5 hover:text-[var(--text-main)]"
+                  title="Add Folder at Root"
+                >
+                  <FolderPlus size={12} />
+                </button>
+              </div>
+            </div>
+
+            {/* Root Add Form */}
+            {isAddingAtRoot && (
+              <div className="bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-xl p-2.5 my-1 mx-1 flex flex-col">
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder={isAddingAtRoot.type === 'file' ? 'File name...' : 'Folder name...'}
+                  value={newItemName}
+                  onChange={e => setNewItemName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleFinishRootAdd()}
+                  className="bg-transparent text-xs mb-2 outline-none border-b border-[var(--border-glass)] pb-1 placeholder:text-[var(--text-muted)] text-[var(--text-main)]"
+                />
+                {isAddingAtRoot.type === 'file' && (
+                  <div className="flex gap-1 mb-2">
+                    {(['md', 'Tasks', 'Board'] as FileType[]).map(t => (
+                      <button
+                        key={t}
+                        onClick={() => setNewFileType(t)}
+                        className={cn(
+                          "flex-1 p-1 rounded flex justify-center text-[10px] transition-all",
+                          newFileType === t ? "bg-[var(--accent)] text-white" : "hover:bg-black/5 dark:hover:bg-white/10 text-[var(--text-muted)]"
+                        )}
+                        title={t}
+                      >
+                        {TYPE_ICONS[t]}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-2 justify-end text-[10px] font-semibold">
+                  <button onClick={() => setIsAddingAtRoot(null)} className="px-2 py-1 rounded hover:bg-black/5 dark:hover:bg-white/10 text-[var(--text-muted)]">Cancel</button>
+                  <button onClick={handleFinishRootAdd} className="px-2.5 py-1 rounded bg-[var(--accent)] text-white">Create</button>
+                </div>
+              </div>
+            )}
+
+            {/* Recursively render nodes */}
+            {filesTree.length === 0 ? (
+              <div className="py-6 text-center text-[10px] text-[var(--text-muted)] italic">
+                Vault is empty
+              </div>
+            ) : (
+              filesTree.map(node => renderNode(node))
+            )}
+          </>
+        ) : (
+          <div className="h-full flex flex-col items-center justify-center text-center p-4 text-[var(--text-muted)]">
+            <Folder size={20} className="mb-2 opacity-30" />
+            <span className="text-[10px]">No Vault Selected</span>
+          </div>
+        )}
+      </div>
+
+      {/* Theme and settings selector at the bottom */}
+      <div className="mt-auto p-4 mb-4 space-y-3">
         <ThemeSelector theme={theme} setTheme={setTheme} />
+        {vaultPath && (
+          <div className="flex flex-col gap-1 text-[10px] text-[var(--text-muted)] border-t border-[var(--border-glass)] pt-3 truncate">
+            <span className="font-semibold text-xs tracking-wider uppercase text-[var(--text-muted)] opacity-60">Vault Path</span>
+            <span className="truncate opacity-80" title={vaultPath}>{vaultPath}</span>
+          </div>
+        )}
       </div>
     </div>
   );
