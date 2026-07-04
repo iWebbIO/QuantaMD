@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -51,7 +51,7 @@ function createWindow() {
     frame: false, // frameless window
     backgroundColor: '#1c1c1e', // match dark theme initially
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
       contextIsolation: true
     }
@@ -281,7 +281,6 @@ ipcMain.handle('fs:renameEntry', (event, oldPath: string, newPath: string) => {
 
 ipcMain.handle('fs:showInExplorer', (event, filePath: string) => {
   try {
-    const { shell } = require('electron');
     shell.showItemInFolder(filePath);
     return true;
   } catch (error) {

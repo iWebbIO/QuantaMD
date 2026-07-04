@@ -3,10 +3,10 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "main": "dist-electron/main.js",
+  "main": "dist-electron/main.cjs",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
-    "electron:dev": "node scripts/build-electron.cjs && electron dist-electron/main.js",
+    "electron:dev": "node scripts/build-electron.cjs && electron dist-electron/main.cjs",
     "electron:build": "node scripts/build-electron.cjs",
     "build": "node scripts/build-electron.cjs && vite build",
     "preview": "vite preview",

@@ -13,6 +13,7 @@ async function run() {
     platform: 'node',
     target: 'node20',
     outdir: path.join(__dirname, '../dist-electron'),
+    outExtension: { '.js': '.cjs' },
     external: ['electron'],
     sourcemap: true,
     minify: false,
