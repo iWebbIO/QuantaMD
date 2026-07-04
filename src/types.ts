@@ -121,6 +121,11 @@ export interface AppSettings {
   editorLineNumbers: boolean;
   editorWordWrap: boolean;
   editorTabSize: number;
+  startupBehavior?: 'last-vault' | 'empty';
+  windowBounds?: { x?: number, y?: number, width: number, height: number };
+  exportDirectory?: string;
+  exportTemplatePdf?: string;
+  exportTemplateHtml?: string;
 }
 
 // Tab for editor workspace

@@ -1,5 +1,5 @@
 import { AppSettings, Theme } from '../types';
-import { X, Key, FolderOpen, Sliders, Palette, Keyboard, FileText, SunMoon, Bot, RefreshCw, Type, AlignLeft } from 'lucide-react';
+import { X, Key, FolderOpen, Sliders, Palette, Keyboard, FileText, SunMoon, Bot, RefreshCw, Type, AlignLeft, Download } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { ThemeSelector } from './ThemeSelector';
 import { useState, useEffect } from 'react';
@@ -33,7 +33,7 @@ const ACCENT_COLORS = [
 ];
 
 export function SettingsModal({ isOpen, onClose, settings, saveSettings, selectVault, theme, setTheme }: Props) {
-  const [activeTab, setActiveTab] = useState<'general' | 'editor' | 'ai'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'editor' | 'ai' | 'export'>('general');
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [isFetchingModels, setIsFetchingModels] = useState(false);
 
@@ -113,6 +113,15 @@ export function SettingsModal({ isOpen, onClose, settings, saveSettings, selectV
             >
               <Bot size={16} /> AI Assistant
             </button>
+            <button
+              onClick={() => setActiveTab('export')}
+              className={cn(
+                "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                activeTab === 'export' ? "bg-[var(--accent)] text-white shadow-sm" : "text-[var(--text-muted)] hover:bg-[var(--bg-glass)] hover:text-[var(--text-main)]"
+              )}
+            >
+              <Download size={16} /> Export
+            </button>
           </nav>
         </div>
 
@@ -152,6 +161,21 @@ export function SettingsModal({ isOpen, onClose, settings, saveSettings, selectV
                           Browse
                         </button>
                       </div>
+                    </div>
+                    
+                    {/* Startup Behavior */}
+                    <div className="space-y-2 mb-6">
+                      <label className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
+                        <SunMoon size={14} /> Startup Behavior
+                      </label>
+                      <select
+                        value={settings.startupBehavior || 'last-vault'}
+                        onChange={e => saveSettings({ startupBehavior: e.target.value as 'last-vault' | 'empty' })}
+                        className="w-full bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-xl px-3 py-2 text-sm outline-none focus:border-[var(--accent)] text-[var(--text-main)]"
+                      >
+                        <option value="last-vault" className="bg-[var(--bg-sidebar)]">Open last vault</option>
+                        <option value="empty" className="bg-[var(--bg-sidebar)]">Start empty</option>
+                      </select>
                     </div>
 
                     {/* Accent Color */}
@@ -420,6 +444,62 @@ export function SettingsModal({ isOpen, onClose, settings, saveSettings, selectV
                           </div>
                         </div>
                       )}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* EXPORT TAB */}
+              {activeTab === 'export' && (
+                <>
+                  <div>
+                    <h3 className="text-lg font-bold mb-4">Export Preferences</h3>
+                    
+                    <div className="space-y-6">
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
+                          <FolderOpen size={14} /> Default Export Directory
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={settings.exportDirectory || ''}
+                            onChange={(e) => saveSettings({ exportDirectory: e.target.value })}
+                            placeholder="Same as current file"
+                            className="flex-1 bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-xl px-4 py-2 text-sm outline-none text-[var(--text-main)] focus:border-[var(--accent)]"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
+                          <FileText size={14} /> PDF Export Template
+                        </label>
+                        <select
+                          value={settings.exportTemplatePdf || 'default'}
+                          onChange={e => saveSettings({ exportTemplatePdf: e.target.value })}
+                          className="w-full bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-xl px-3 py-2 text-sm outline-none focus:border-[var(--accent)] text-[var(--text-main)]"
+                        >
+                          <option value="default" className="bg-[var(--bg-sidebar)]">Default (Light)</option>
+                          <option value="academic" className="bg-[var(--bg-sidebar)]">Academic (Serif)</option>
+                          <option value="modern" className="bg-[var(--bg-sidebar)]">Modern (Sans-Serif)</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
+                          <FileText size={14} /> HTML Export Template
+                        </label>
+                        <select
+                          value={settings.exportTemplateHtml || 'default'}
+                          onChange={e => saveSettings({ exportTemplateHtml: e.target.value })}
+                          className="w-full bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-xl px-3 py-2 text-sm outline-none focus:border-[var(--accent)] text-[var(--text-main)]"
+                        >
+                          <option value="default" className="bg-[var(--bg-sidebar)]">Default Theme</option>
+                          <option value="dark" className="bg-[var(--bg-sidebar)]">Dark Theme (Standalone)</option>
+                          <option value="minimal" className="bg-[var(--bg-sidebar)]">Minimal (No CSS)</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
                 </>

@@ -87,6 +87,10 @@ export function Sidebar({
   const [editName, setEditName] = useState('');
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>('files');
   
+  // Drag and drop state
+  const [draggedNode, setDraggedNode] = useState<FileEntry | null>(null);
+  const [dragOverNodeId, setDragOverNodeId] = useState<string | null>(null);
+  
   // Adding items helper state
   const [addingToFolder, setAddingToFolder] = useState<{ path: string; type: 'file' | 'folder' } | null>(null);
   const [newItemName, setNewItemName] = useState('');
@@ -190,9 +194,45 @@ export function Sidebar({
       <div key={node.path} className="flex flex-col">
         {/* Row element */}
         <div
+          draggable={true}
+          onDragStart={(e) => {
+            e.stopPropagation();
+            setDraggedNode(node);
+            if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+          }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (draggedNode && draggedNode.path !== node.path && node.isDirectory) {
+              setDragOverNodeId(node.path);
+            }
+          }}
+          onDragLeave={() => {
+            if (dragOverNodeId === node.path) {
+              setDragOverNodeId(null);
+            }
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setDragOverNodeId(null);
+            if (draggedNode && draggedNode.path !== node.path && node.isDirectory) {
+              const parentDir = node.path;
+              let newPath = '';
+              if (draggedNode.isDirectory) {
+                newPath = parentDir + (parentDir.includes('\\') ? '\\' : '/') + draggedNode.name;
+              } else {
+                const ext = draggedNode.path.substring(draggedNode.path.lastIndexOf('.'));
+                newPath = parentDir + (parentDir.includes('\\') ? '\\' : '/') + draggedNode.name + (draggedNode.name.endsWith(ext) ? '' : ext);
+              }
+              onRenameEntry(draggedNode.path, newPath, draggedNode.isDirectory);
+            }
+            setDraggedNode(null);
+          }}
           className={cn(
             "group flex items-center justify-between py-1.5 pr-2 rounded-xl text-xs font-medium cursor-pointer transition-all select-none hover:bg-black/5 dark:hover:bg-white/5",
-            isActive && "bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 shadow-sm"
+            isActive && "bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 shadow-sm",
+            dragOverNodeId === node.path && "bg-black/10 dark:bg-white/10 outline-dashed outline-1 outline-[var(--accent)]"
           )}
           style={{ paddingLeft: `${depth * 12 + 8}px` }}
           onContextMenu={(e) => handleContextMenu(e, node)}

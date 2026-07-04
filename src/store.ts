@@ -60,7 +60,11 @@ export function useWorkspace() {
     dailyNoteTemplate: '# {{date}}\n\n## Tasks\n\n- [ ] \n\n## Notes\n\n',
     editorLineNumbers: true,
     editorWordWrap: true,
-    editorTabSize: 2
+    editorTabSize: 2,
+    startupBehavior: 'last-vault',
+    exportDirectory: '',
+    exportTemplatePdf: 'default',
+    exportTemplateHtml: 'default'
   });
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -92,12 +96,16 @@ export function useWorkspace() {
             dailyNoteTemplate: appSettings.dailyNoteTemplate || '# {{date}}\n\n## Tasks\n\n- [ ] \n\n## Notes\n\n',
             editorLineNumbers: appSettings.editorLineNumbers ?? true,
             editorWordWrap: appSettings.editorWordWrap ?? true,
-            editorTabSize: appSettings.editorTabSize || 2
+            editorTabSize: appSettings.editorTabSize || 2,
+            startupBehavior: appSettings.startupBehavior || 'last-vault',
+            exportDirectory: appSettings.exportDirectory || '',
+            exportTemplatePdf: appSettings.exportTemplatePdf || 'default',
+            exportTemplateHtml: appSettings.exportTemplateHtml || 'default'
           };
           setSettings(mergedSettings);
           setThemeState(mergedSettings.theme as Theme);
           
-          if (mergedSettings.defaultVaultPath) {
+          if (mergedSettings.defaultVaultPath && mergedSettings.startupBehavior !== 'empty') {
             setVaultPath(mergedSettings.defaultVaultPath);
             const list = await window.electronAPI.readDirectory(mergedSettings.defaultVaultPath);
             setFilesTree(list);

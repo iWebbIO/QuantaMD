@@ -9,7 +9,6 @@ let watcher: any = null;
 // Settings path in user data folder
 const SETTINGS_PATH = path.join(app.getPath('userData'), 'settings.json');
 
-// Interface for settings
 interface AppSettings {
   geminiApiKey: string;
   defaultVaultPath: string;
@@ -19,6 +18,11 @@ interface AppSettings {
   accentColor: string;
   vimMode: boolean;
   dailyNoteTemplate: string;
+  startupBehavior?: 'last-vault' | 'empty';
+  windowBounds?: { x?: number, y?: number, width: number, height: number };
+  exportDirectory?: string;
+  exportTemplatePdf?: string;
+  exportTemplateHtml?: string;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -29,7 +33,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   fontSize: 14,
   accentColor: '210 100% 50%',
   vimMode: false,
-  dailyNoteTemplate: '# {{date}}\n\n## Tasks\n\n- [ ] \n\n## Notes\n\n'
+  dailyNoteTemplate: '# {{date}}\n\n## Tasks\n\n- [ ] \n\n## Notes\n\n',
+  startupBehavior: 'last-vault'
 };
 
 function loadSettings(): AppSettings {
@@ -53,9 +58,14 @@ function saveSettings(settings: AppSettings) {
 }
 
 function createWindow() {
+  const settings = loadSettings();
+  const bounds = settings.windowBounds || { width: 1200, height: 800 };
+  
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    x: bounds.x,
+    y: bounds.y,
+    width: bounds.width,
+    height: bounds.height,
     frame: false, // frameless window
     backgroundColor: '#1c1c1e', // match dark theme initially
     webPreferences: {
@@ -64,6 +74,25 @@ function createWindow() {
       contextIsolation: true,
       sandbox: false
     }
+  });
+
+  const saveBounds = () => {
+    if (!mainWindow) return;
+    const currentBounds = mainWindow.getBounds();
+    const currentSettings = loadSettings();
+    saveSettings({ ...currentSettings, windowBounds: currentBounds });
+  };
+
+  let resizeTimer: NodeJS.Timeout;
+  mainWindow.on('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(saveBounds, 500);
+  });
+
+  let moveTimer: NodeJS.Timeout;
+  mainWindow.on('moved', () => {
+    clearTimeout(moveTimer);
+    moveTimer = setTimeout(saveBounds, 500);
   });
 
   const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;

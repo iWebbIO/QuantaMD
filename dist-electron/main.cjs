@@ -1769,7 +1769,8 @@ var DEFAULT_SETTINGS = {
   fontSize: 14,
   accentColor: "210 100% 50%",
   vimMode: false,
-  dailyNoteTemplate: "# {{date}}\n\n## Tasks\n\n- [ ] \n\n## Notes\n\n"
+  dailyNoteTemplate: "# {{date}}\n\n## Tasks\n\n- [ ] \n\n## Notes\n\n",
+  startupBehavior: "last-vault"
 };
 function loadSettings() {
   try {
@@ -1790,9 +1791,13 @@ function saveSettings(settings) {
   }
 }
 function createWindow() {
+  const settings = loadSettings();
+  const bounds = settings.windowBounds || { width: 1200, height: 800 };
   mainWindow = new import_electron.BrowserWindow({
-    width: 1200,
-    height: 800,
+    x: bounds.x,
+    y: bounds.y,
+    width: bounds.width,
+    height: bounds.height,
     frame: false,
     // frameless window
     backgroundColor: "#1c1c1e",
@@ -1803,6 +1808,22 @@ function createWindow() {
       contextIsolation: true,
       sandbox: false
     }
+  });
+  const saveBounds = () => {
+    if (!mainWindow) return;
+    const currentBounds = mainWindow.getBounds();
+    const currentSettings = loadSettings();
+    saveSettings({ ...currentSettings, windowBounds: currentBounds });
+  };
+  let resizeTimer;
+  mainWindow.on("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(saveBounds, 500);
+  });
+  let moveTimer;
+  mainWindow.on("moved", () => {
+    clearTimeout(moveTimer);
+    moveTimer = setTimeout(saveBounds, 500);
   });
   const isDev = process.env.NODE_ENV === "development" || !import_electron.app.isPackaged;
   if (isDev) {
