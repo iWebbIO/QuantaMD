@@ -33,7 +33,7 @@ const ACCENT_COLORS = [
 ];
 
 export function SettingsModal({ isOpen, onClose, settings, saveSettings, selectVault, theme, setTheme }: Props) {
-  const [activeTab, setActiveTab] = useState<'general' | 'editor' | 'ai' | 'export'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'editor' | 'ai' | 'export' | 'sync' | 'hotkeys'>('general');
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [isFetchingModels, setIsFetchingModels] = useState(false);
 
@@ -121,6 +121,24 @@ export function SettingsModal({ isOpen, onClose, settings, saveSettings, selectV
               )}
             >
               <Download size={16} /> Export
+            </button>
+            <button
+              onClick={() => setActiveTab('sync')}
+              className={cn(
+                "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                activeTab === 'sync' ? "bg-[var(--accent)] text-white shadow-sm" : "text-[var(--text-muted)] hover:bg-[var(--bg-glass)] hover:text-[var(--text-main)]"
+              )}
+            >
+              <RefreshCw size={16} /> Sync
+            </button>
+            <button
+              onClick={() => setActiveTab('hotkeys')}
+              className={cn(
+                "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                activeTab === 'hotkeys' ? "bg-[var(--accent)] text-white shadow-sm" : "text-[var(--text-muted)] hover:bg-[var(--bg-glass)] hover:text-[var(--text-main)]"
+              )}
+            >
+              <Keyboard size={16} /> Hotkeys
             </button>
           </nav>
         </div>
@@ -499,6 +517,115 @@ export function SettingsModal({ isOpen, onClose, settings, saveSettings, selectV
                           <option value="dark" className="bg-[var(--bg-sidebar)]">Dark Theme (Standalone)</option>
                           <option value="minimal" className="bg-[var(--bg-sidebar)]">Minimal (No CSS)</option>
                         </select>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* SYNC TAB */}
+              {activeTab === 'sync' && (
+                <>
+                  <div>
+                    <h3 className="text-lg font-bold mb-4">Git Synchronization</h3>
+                    
+                    <div className="space-y-6">
+                      <div className="flex items-center justify-between p-4 bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-xl">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-[var(--accent-light)] text-[var(--accent)] rounded-lg">
+                            <RefreshCw size={16} />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-semibold">Enable Git Sync</h4>
+                            <p className="text-[11px] text-[var(--text-muted)]">Automatically backup notes to a remote repository</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => saveSettings({ syncEnabled: !settings.syncEnabled })}
+                          className={cn(
+                            "relative w-10 h-6 rounded-full transition-colors duration-200",
+                            settings.syncEnabled ? "bg-[var(--accent)]" : "bg-[var(--border-glass-strong)]"
+                          )}
+                        >
+                          <span className={cn("absolute left-0 top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200", settings.syncEnabled ? "translate-x-[18px]" : "translate-x-0.5")} />
+                        </button>
+                      </div>
+
+                      {settings.syncEnabled && (
+                        <div className="space-y-4 p-4 bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-xl">
+                          <div className="space-y-2">
+                            <label className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                              Git Remote URL
+                            </label>
+                            <input
+                              type="text"
+                              value={settings.gitRemoteUrl || ''}
+                              onChange={(e) => saveSettings({ gitRemoteUrl: e.target.value })}
+                              placeholder="https://github.com/user/repo.git"
+                              className="w-full bg-[var(--bg-sidebar)] border border-[var(--border-glass)] rounded-xl px-4 py-2 text-sm outline-none focus:border-[var(--accent)] text-[var(--text-main)]"
+                            />
+                            <p className="text-[11px] text-[var(--text-muted)]">Make sure your machine is authenticated with this Git provider (e.g., via SSH or Git Credential Manager).</p>
+                          </div>
+
+                          <div className="pt-4 border-t border-[var(--border-glass)]">
+                            <button
+                              onClick={async () => {
+                                if (window.electronAPI && window.electronAPI.syncGit) {
+                                  // Requires vaultPath, we don't have it directly in settings modal props, we might need to rely on the current vault
+                                  // Wait, SettingsModal doesn't have vaultPath prop!
+                                  // Let's dispatch an event or just let the main process use defaultVaultPath
+                                  // Or just show a message. For now we will rely on defaultVaultPath
+                                  const vault = settings.defaultVaultPath;
+                                  if (vault) {
+                                    alert('Syncing...');
+                                    const res = await window.electronAPI.syncGit(vault);
+                                    alert(res.message);
+                                  } else {
+                                    alert('No vault path configured.');
+                                  }
+                                }
+                              }}
+                              className="px-4 py-2 bg-[var(--bg-sidebar)] border border-[var(--border-glass-strong)] hover:bg-[var(--accent)] hover:text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2"
+                            >
+                              <RefreshCw size={14} /> Sync Now
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* HOTKEYS TAB */}
+              {activeTab === 'hotkeys' && (
+                <>
+                  <div>
+                    <h3 className="text-lg font-bold mb-4">Keyboard Shortcuts</h3>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between p-3 bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-xl">
+                        <span className="text-sm font-medium">Command Palette / Search</span>
+                        <kbd className="px-2 py-1 bg-[var(--bg-sidebar)] border border-[var(--border-glass-strong)] rounded text-xs font-mono">Ctrl + P</kbd>
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-xl">
+                        <span className="text-sm font-medium">Global Search</span>
+                        <kbd className="px-2 py-1 bg-[var(--bg-sidebar)] border border-[var(--border-glass-strong)] rounded text-xs font-mono">Ctrl + Shift + F</kbd>
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-xl">
+                        <span className="text-sm font-medium">Close Tab</span>
+                        <kbd className="px-2 py-1 bg-[var(--bg-sidebar)] border border-[var(--border-glass-strong)] rounded text-xs font-mono">Ctrl + W</kbd>
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-xl">
+                        <span className="text-sm font-medium">New File</span>
+                        <kbd className="px-2 py-1 bg-[var(--bg-sidebar)] border border-[var(--border-glass-strong)] rounded text-xs font-mono">Ctrl + N</kbd>
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-xl">
+                        <span className="text-sm font-medium">Save</span>
+                        <kbd className="px-2 py-1 bg-[var(--bg-sidebar)] border border-[var(--border-glass-strong)] rounded text-xs font-mono">Ctrl + S</kbd>
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-xl">
+                        <span className="text-sm font-medium">Toggle Fullscreen</span>
+                        <kbd className="px-2 py-1 bg-[var(--bg-sidebar)] border border-[var(--border-glass-strong)] rounded text-xs font-mono">F11</kbd>
                       </div>
                     </div>
                   </div>

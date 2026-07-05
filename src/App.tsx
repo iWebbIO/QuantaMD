@@ -79,21 +79,42 @@ function App() {
         setIsCommandPaletteOpen(prev => !prev);
       }
       // Toggle Search Panel (Ctrl+Shift+F)
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'F') {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'f') {
         e.preventDefault();
         setShowSearchPanel(true);
       }
       // Close tab (Ctrl+W)
-      if ((e.ctrlKey || e.metaKey) && e.key === 'w') {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'w') {
         if (activeTabId) {
           e.preventDefault();
           closeTab(activeTabId);
         }
       }
+      // New File (Ctrl+N)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
+        if (vaultPath) {
+          e.preventDefault();
+          addFile('Untitled', 'md');
+        }
+      }
+      // Save (Ctrl+S) - Mostly handled by auto-save, but prevent default browser dialog
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        if (activeFile) {
+          updateFileContent(activeFile.id, activeFile.content);
+        }
+      }
+      // Fullscreen (F11)
+      if (e.key === 'F11') {
+        e.preventDefault();
+        if (window.electronAPI) {
+          window.electronAPI.maximize();
+        }
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeTabId, closeTab]);
+  }, [activeTabId, closeTab, vaultPath, addFile, activeFile, updateFileContent]);
 
   const toggleRightPanel = (mode: RightPanelMode) => {
     setRightPanelMode(prev => prev === mode ? 'none' : mode);
@@ -121,7 +142,7 @@ function App() {
 
   return (
     <div className={cn("h-screen flex flex-col overflow-hidden transition-colors duration-300", theme === 'light' ? 'bg-[#f5f5f7]' : theme === 'amoled' ? 'bg-black' : 'bg-[#1c1c1e]')}>
-      {isElectron && <TitleBar vaultPath={vaultPath} activeFileName={activeFile?.name || null} onOpenSearch={() => setIsCommandPaletteOpen(true)} />}
+      {isElectron && <TitleBar onOpenSearch={() => setIsCommandPaletteOpen(true)} />}
 
       <div className="flex-1 flex overflow-hidden">
         {/* Left Sidebar or Search Panel */}

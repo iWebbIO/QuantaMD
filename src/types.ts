@@ -59,6 +59,8 @@ declare global {
       permanentDeleteTrash: (trashPath: string) => Promise<boolean>;
       createDailyNote: (vaultPath: string, date: string, template: string) => Promise<string>;
       onExternalFileChange: (callback: (event: { type: string; path: string }) => void) => () => void;
+      exportPdf: () => Promise<boolean>;
+      syncGit: (vaultPath: string) => Promise<{success: boolean, message: string}>;
     };
   }
 }
@@ -121,11 +123,15 @@ export interface AppSettings {
   editorLineNumbers: boolean;
   editorWordWrap: boolean;
   editorTabSize: number;
+  editorViewMode?: 'source' | 'split' | 'preview';
   startupBehavior?: 'last-vault' | 'empty';
   windowBounds?: { x?: number, y?: number, width: number, height: number };
   exportDirectory?: string;
   exportTemplatePdf?: string;
   exportTemplateHtml?: string;
+  syncEnabled?: boolean;
+  gitRemoteUrl?: string;
+  autoSyncInterval?: number; // in minutes
 }
 
 // Tab for editor workspace

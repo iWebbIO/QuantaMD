@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { languages } from '@codemirror/language-data';
@@ -12,6 +12,8 @@ import { WorkspaceFile, Theme, AppSettings } from '../../types';
 import { markdownLivePreview } from './markdownLivePreview';
 import { cn } from '../../lib/utils';
 import { useContextMenu, ContextMenuItem } from '../ContextMenu';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 import { vim } from '@replit/codemirror-vim';
 interface Props {
@@ -57,7 +59,7 @@ export function MarkdownEditor({ file, onChange, theme, settings }: Props) {
     onChange(val);
   };
 
-  const getThemeExtension = () => {
+  const themeExtension = useMemo(() => {
     return EditorView.theme({
       "&": {
         color: "var(--text-main)",
@@ -89,7 +91,7 @@ export function MarkdownEditor({ file, onChange, theme, settings }: Props) {
         color: "var(--text-main)"
       }
     }, { dark: theme !== 'light' });
-  };
+  }, [theme]);
 
   const insertSyntax = (prefix: string, suffix: string = '') => {
     const view = editorRef.current?.view;
@@ -133,50 +135,67 @@ export function MarkdownEditor({ file, onChange, theme, settings }: Props) {
   };
 
   // Setup extensions array
-  const extensions = [
-    markdown({ base: markdownLanguage, codeLanguages: languages }),
-    markdownLivePreview(),
-    getThemeExtension(),
-    EditorState.tabSize.of(settings.editorTabSize ?? 2)
-  ];
+  const extensions = useMemo(() => {
+    const exts = [
+      markdown({ base: markdownLanguage, codeLanguages: languages }),
+      markdownLivePreview(),
+      themeExtension,
+      EditorState.tabSize.of(settings.editorTabSize ?? 2)
+    ];
 
-  if (settings.editorWordWrap !== false) {
-    extensions.push(EditorView.lineWrapping);
-  }
+    if (settings.editorWordWrap !== false) {
+      exts.push(EditorView.lineWrapping);
+    }
 
-  if (settings.vimMode && vim) {
-    extensions.push(vim({ status: true }));
-  }
+    if (settings.vimMode && vim) {
+      exts.push(vim({ status: true }));
+    }
+    return exts;
+  }, [themeExtension, settings.editorTabSize, settings.editorWordWrap, settings.vimMode]);
+
+  const viewMode = settings.editorViewMode || 'source';
 
   return (
     <div className="h-full flex flex-col relative bg-transparent">
-      {/* CodeMirror Editor Area */}
-      <div 
-        className="flex-1 overflow-hidden relative"
-        onContextMenu={handleContextMenu}
-      >
-        <CodeMirror
-          value={content}
-          height="100%"
-          theme="none"
-          extensions={extensions}
-          onChange={handleChange}
-          className="h-full w-full text-base"
-          basicSetup={{
-            lineNumbers: settings.editorLineNumbers ?? true,
-            foldGutter: false,
-            dropCursor: false,
-            allowMultipleSelections: true,
-            indentOnInput: true,
-            bracketMatching: true,
-            closeBrackets: true,
-            autocompletion: true,
-            highlightActiveLine: false,
-            highlightSelectionMatches: true,
-            defaultHighlightStyle: false,
-          }}
-          ref={editorRef}
-        />
+      <div className="flex-1 flex overflow-hidden w-full h-full relative">
+        {/* Editor Pane */}
+        {(viewMode === 'source' || viewMode === 'split') && (
+          <div 
+            className={cn("h-full relative overflow-hidden", viewMode === 'split' ? "w-1/2 border-r border-[var(--border-glass)]" : "w-full")}
+            onContextMenu={handleContextMenu}
+          >
+            <CodeMirror
+              value={content}
+              height="100%"
+              theme="none"
+              extensions={extensions}
+              onChange={handleChange}
+              className="h-full w-full text-base"
+              basicSetup={{
+                lineNumbers: settings.editorLineNumbers ?? true,
+                foldGutter: false,
+                dropCursor: false,
+                allowMultipleSelections: true,
+                indentOnInput: true,
+                bracketMatching: true,
+                closeBrackets: true,
+                autocompletion: true,
+                highlightActiveLine: false,
+                highlightSelectionMatches: true
+              }}
+              ref={editorRef}
+            />
+          </div>
+        )}
+
+        {/* Preview Pane */}
+        {(viewMode === 'preview' || viewMode === 'split') && (
+          <div className={cn("h-full overflow-y-auto p-8 prose prose-sm max-w-none dark:prose-invert text-[var(--text-main)] bg-[var(--bg-base)] transition-colors", viewMode === 'split' ? "w-1/2" : "w-full mx-auto max-w-4xl")}>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {content}
+            </ReactMarkdown>
+          </div>
+        )}
       </div>
       <ContextMenuComponent />
     </div>

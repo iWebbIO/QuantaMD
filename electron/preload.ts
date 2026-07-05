@@ -45,5 +45,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const handler = (_event: any, data: { type: string; path: string }) => callback(data);
     ipcRenderer.on('fs:external-change', handler);
     return () => { ipcRenderer.removeListener('fs:external-change', handler); };
-  }
+  },
+  exportPdf: () => ipcRenderer.invoke('fs:exportPdf'),
+  syncGit: (vaultPath: string) => ipcRenderer.invoke('fs:syncGit', vaultPath)
 });

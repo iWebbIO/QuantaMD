@@ -2,6 +2,10 @@ import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as chokidar from 'chokidar';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 
 let mainWindow: BrowserWindow | null = null;
 let watcher: any = null;
@@ -23,6 +27,8 @@ interface AppSettings {
   exportDirectory?: string;
   exportTemplatePdf?: string;
   exportTemplateHtml?: string;
+  syncEnabled?: boolean;
+  gitRemoteUrl?: string;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -619,6 +625,77 @@ ipcMain.handle('fs:createDailyNote', async (event, vaultPath: string, date: stri
   } catch (error) {
     console.error('Failed to create daily note:', error);
     throw error;
+  }
+});
+
+// PDF Export
+ipcMain.handle('fs:exportPdf', async (event) => {
+  if (!mainWindow) return false;
+  try {
+    const { filePath } = await dialog.showSaveDialog(mainWindow, {
+      title: 'Export PDF',
+      defaultPath: 'export.pdf',
+      filters: [{ name: 'PDF', extensions: ['pdf'] }]
+    });
+
+    if (filePath) {
+      const pdfData = await mainWindow.webContents.printToPDF({
+        printBackground: true
+      });
+      fs.writeFileSync(filePath, pdfData);
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error('Failed to export PDF:', error);
+    return false;
+  }
+});
+
+// Git Sync
+ipcMain.handle('fs:syncGit', async (event, vaultPath: string) => {
+  try {
+    const settings = loadSettings();
+    if (!settings.syncEnabled || !settings.gitRemoteUrl) {
+      return { success: false, message: 'Sync not configured or disabled' };
+    }
+
+    const gitDir = path.join(vaultPath, '.git');
+    if (!fs.existsSync(gitDir)) {
+      await execAsync('git init', { cwd: vaultPath });
+      await execAsync(`git remote add origin ${settings.gitRemoteUrl}`, { cwd: vaultPath });
+      await execAsync('git branch -M main', { cwd: vaultPath });
+    } else {
+      try {
+        await execAsync(`git remote set-url origin ${settings.gitRemoteUrl}`, { cwd: vaultPath });
+      } catch (e) {
+        await execAsync(`git remote add origin ${settings.gitRemoteUrl}`, { cwd: vaultPath });
+      }
+    }
+
+    await execAsync('git add .', { cwd: vaultPath });
+    
+    try {
+      const commitMsg = `Sync ${new Date().toISOString()}`;
+      await execAsync(`git commit -m "${commitMsg}"`, { cwd: vaultPath });
+    } catch (e: any) {
+      if (!e.stdout?.includes('nothing to commit')) {
+        console.log('Git commit details:', e);
+      }
+    }
+
+    try {
+      await execAsync('git pull origin main --rebase', { cwd: vaultPath });
+    } catch (e) {
+      console.log('Git pull failed or no remote branch yet');
+    }
+
+    await execAsync('git push origin main', { cwd: vaultPath });
+
+    return { success: true, message: 'Synced successfully' };
+  } catch (error: any) {
+    console.error('Git sync failed:', error);
+    return { success: false, message: error.message || 'Unknown error' };
   }
 });
 

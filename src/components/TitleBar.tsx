@@ -1,23 +1,32 @@
 import { useState, useEffect } from 'react';
 import { Minus, Square, X, FolderKanban, Search, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Dropdown, DropdownItem } from './ui/Dropdown';
+import { useWorkspace } from '../store';
 
 interface Props {
-  vaultPath: string | null;
-  activeFileName: string | null;
   onOpenSearch?: () => void;
 }
 
-export function TitleBar({ vaultPath, activeFileName, onOpenSearch }: Props) {
+export function TitleBar({ onOpenSearch }: Props) {
   const [isMaximized, setIsMaximized] = useState(false);
-  const isElectron = typeof window !== 'undefined' && !!window.electronAPI;
+  
+  const {
+    isElectron,
+    vaultPath,
+    activeFile,
+    addFile,
+    closeTab,
+    activeTabId,
+    settings,
+    saveAppSettings,
+    updateFileContent
+  } = useWorkspace();
 
   useEffect(() => {
     if (!isElectron || !window.electronAPI) return;
     
-    // Check initial maximized state
     window.electronAPI.isMaximized().then(setIsMaximized);
 
-    // Periodically sync maximized state on resize
     const checkState = () => {
       if (window.electronAPI) {
         window.electronAPI.isMaximized().then(setIsMaximized);
@@ -37,8 +46,40 @@ export function TitleBar({ vaultPath, activeFileName, onOpenSearch }: Props) {
   };
   const handleClose = () => window.electronAPI?.close();
 
-  // Get display name for vault
   const vaultName = vaultPath ? vaultPath.substring(vaultPath.lastIndexOf('\\') + 1) : null;
+
+  const fileItems: DropdownItem[] = [
+    { label: 'New File', shortcut: 'Ctrl+N', onClick: () => vaultPath && addFile('Untitled', 'md') },
+    { divider: true, label: '', onClick: () => {} },
+    { label: 'Save', shortcut: 'Ctrl+S', onClick: () => {
+      if (activeFile) updateFileContent(activeFile.id, activeFile.content);
+    }},
+    { label: 'Export to PDF...', onClick: async () => {
+      if (window.electronAPI?.exportPdf) {
+        await window.electronAPI.exportPdf();
+      }
+    }},
+    { divider: true, label: '', onClick: () => {} },
+    { label: 'Close Tab', shortcut: 'Ctrl+W', onClick: () => activeTabId && closeTab(activeTabId) },
+    { label: 'Exit', onClick: handleClose }
+  ];
+
+  const editItems: DropdownItem[] = [
+    { label: 'Undo', shortcut: 'Ctrl+Z', onClick: () => document.execCommand('undo') },
+    { label: 'Redo', shortcut: 'Ctrl+Y', onClick: () => document.execCommand('redo') },
+    { divider: true, label: '', onClick: () => {} },
+    { label: 'Cut', shortcut: 'Ctrl+X', onClick: () => document.execCommand('cut') },
+    { label: 'Copy', shortcut: 'Ctrl+C', onClick: () => document.execCommand('copy') },
+    { label: 'Paste', shortcut: 'Ctrl+V', onClick: () => document.execCommand('paste') }
+  ];
+
+  const viewItems: DropdownItem[] = [
+    { label: 'Source View', onClick: () => saveAppSettings({ editorViewMode: 'source' }) },
+    { label: 'Split View', onClick: () => saveAppSettings({ editorViewMode: 'split' }) },
+    { label: 'Preview Only', onClick: () => saveAppSettings({ editorViewMode: 'preview' }) },
+    { divider: true, label: '', onClick: () => {} },
+    { label: 'Toggle Fullscreen', shortcut: 'F11', onClick: handleMaximize },
+  ];
 
   return (
     <div className="h-[35px] w-full flex items-center justify-between bg-[var(--bg-sidebar)] border-b border-[var(--border-glass-strong)] select-none -webkit-app-region-drag relative z-50 text-[13px]">
@@ -50,11 +91,10 @@ export function TitleBar({ vaultPath, activeFileName, onOpenSearch }: Props) {
         </div>
         
         <div className="flex items-center h-full text-[#cccccc] font-medium -webkit-app-region-no-drag">
-          {['File', 'Edit', 'Selection', 'View', 'Go', 'Help'].map(item => (
-            <button key={item} className="px-2.5 h-[26px] hover:bg-white/10 rounded-md mx-0.5 transition-colors text-[13px] flex items-center justify-center cursor-default">
-              {item}
-            </button>
-          ))}
+          <Dropdown trigger={<span className="px-2.5 py-1 hover:bg-white/10 rounded-md mx-0.5 transition-colors">File</span>} items={fileItems} />
+          <Dropdown trigger={<span className="px-2.5 py-1 hover:bg-white/10 rounded-md mx-0.5 transition-colors">Edit</span>} items={editItems} />
+          <Dropdown trigger={<span className="px-2.5 py-1 hover:bg-white/10 rounded-md mx-0.5 transition-colors">View</span>} items={viewItems} />
+          <Dropdown trigger={<span className="px-2.5 py-1 hover:bg-white/10 rounded-md mx-0.5 transition-colors">Help</span>} items={[{ label: 'About QuantaMD', onClick: () => alert('QuantaMD v1.0') }]} />
         </div>
       </div>
 
@@ -76,25 +116,13 @@ export function TitleBar({ vaultPath, activeFileName, onOpenSearch }: Props) {
 
       {/* Custom Window Controls */}
       <div className="flex h-full -webkit-app-region-no-drag">
-        <button
-          onClick={handleMinimize}
-          className="flex items-center justify-center w-11 h-full hover:bg-black/5 dark:hover:bg-white/5 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
-          title="Minimize"
-        >
+        <button onClick={handleMinimize} className="flex items-center justify-center w-11 h-full hover:bg-black/5 dark:hover:bg-white/5 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
           <Minus size={14} />
         </button>
-        <button
-          onClick={handleMaximize}
-          className="flex items-center justify-center w-11 h-full hover:bg-black/5 dark:hover:bg-white/5 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
-          title={isMaximized ? "Restore" : "Maximize"}
-        >
+        <button onClick={handleMaximize} className="flex items-center justify-center w-11 h-full hover:bg-black/5 dark:hover:bg-white/5 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
           <Square size={10} />
         </button>
-        <button
-          onClick={handleClose}
-          className="flex items-center justify-center w-11 h-full hover:bg-red-500 hover:text-white text-[var(--text-muted)] transition-colors"
-          title="Close"
-        >
+        <button onClick={handleClose} className="flex items-center justify-center w-11 h-full hover:bg-red-500 hover:text-white text-[var(--text-muted)] transition-colors">
           <X size={14} />
         </button>
       </div>

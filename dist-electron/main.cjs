@@ -1758,6 +1758,9 @@ function watch(paths, options = {}) {
 }
 
 // electron/main.ts
+var import_child_process = require("child_process");
+var import_util = require("util");
+var execAsync = (0, import_util.promisify)(import_child_process.exec);
 var mainWindow = null;
 var watcher = null;
 var SETTINGS_PATH = path.join(import_electron.app.getPath("userData"), "settings.json");
@@ -2237,6 +2240,66 @@ import_electron.ipcMain.handle("fs:createDailyNote", async (event, vaultPath, da
   } catch (error) {
     console.error("Failed to create daily note:", error);
     throw error;
+  }
+});
+import_electron.ipcMain.handle("fs:exportPdf", async (event) => {
+  if (!mainWindow) return false;
+  try {
+    const { filePath } = await import_electron.dialog.showSaveDialog(mainWindow, {
+      title: "Export PDF",
+      defaultPath: "export.pdf",
+      filters: [{ name: "PDF", extensions: ["pdf"] }]
+    });
+    if (filePath) {
+      const pdfData = await mainWindow.webContents.printToPDF({
+        printBackground: true
+      });
+      fs.writeFileSync(filePath, pdfData);
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error("Failed to export PDF:", error);
+    return false;
+  }
+});
+import_electron.ipcMain.handle("fs:syncGit", async (event, vaultPath) => {
+  try {
+    const settings = loadSettings();
+    if (!settings.syncEnabled || !settings.gitRemoteUrl) {
+      return { success: false, message: "Sync not configured or disabled" };
+    }
+    const gitDir = path.join(vaultPath, ".git");
+    if (!fs.existsSync(gitDir)) {
+      await execAsync("git init", { cwd: vaultPath });
+      await execAsync(`git remote add origin ${settings.gitRemoteUrl}`, { cwd: vaultPath });
+      await execAsync("git branch -M main", { cwd: vaultPath });
+    } else {
+      try {
+        await execAsync(`git remote set-url origin ${settings.gitRemoteUrl}`, { cwd: vaultPath });
+      } catch (e) {
+        await execAsync(`git remote add origin ${settings.gitRemoteUrl}`, { cwd: vaultPath });
+      }
+    }
+    await execAsync("git add .", { cwd: vaultPath });
+    try {
+      const commitMsg = `Sync ${(/* @__PURE__ */ new Date()).toISOString()}`;
+      await execAsync(`git commit -m "${commitMsg}"`, { cwd: vaultPath });
+    } catch (e) {
+      if (!e.stdout?.includes("nothing to commit")) {
+        console.log("Git commit details:", e);
+      }
+    }
+    try {
+      await execAsync("git pull origin main --rebase", { cwd: vaultPath });
+    } catch (e) {
+      console.log("Git pull failed or no remote branch yet");
+    }
+    await execAsync("git push origin main", { cwd: vaultPath });
+    return { success: true, message: "Synced successfully" };
+  } catch (error) {
+    console.error("Git sync failed:", error);
+    return { success: false, message: error.message || "Unknown error" };
   }
 });
 function findVaultRoot(filePath) {

@@ -34,6 +34,8 @@ import_electron.contextBridge.exposeInMainWorld("electronAPI", {
     return () => {
       import_electron.ipcRenderer.removeListener("fs:external-change", handler);
     };
-  }
+  },
+  exportPdf: () => import_electron.ipcRenderer.invoke("fs:exportPdf"),
+  syncGit: (vaultPath) => import_electron.ipcRenderer.invoke("fs:syncGit", vaultPath)
 });
 //# sourceMappingURL=preload.cjs.map
